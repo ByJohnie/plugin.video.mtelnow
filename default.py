@@ -18,16 +18,15 @@ import time
 __addon_id__= 'plugin.video.mtelnow'
 __Addon = xbmcaddon.Addon(__addon_id__)
 __settings__ = xbmcaddon.Addon(id='plugin.video.mtelnow')
-login = base64.b64decode('aHR0cHM6Ly93d3cuYTFub3cuYmcvbG9naW4uYXNweA==')
-loginred = base64.b64decode('aHR0cHM6Ly93d3cuYTFub3cuYmcvbG9naW4/cT11c2VybG9naW4=')
-dns = base64.b64decode('YTFub3cuYmc=')
-baseurl = base64.b64decode('aHR0cHM6Ly93d3cuYTFub3cuYmcvbm93')
-item = base64.b64decode('aHR0cHM6Ly93d3cuYTFub3cuYmcvTm93T25Udi5hc3B4L0dldEl0ZW1EZXRhaWxz')
-m1 = base64.b64decode('d3d3LmExbm93LmJn')
-m2 = base64.b64decode('aHR0cHM6Ly93d3cuYTFub3cuYmc=')
+login = base64.b64decode('aHR0cHM6Ly9tdGVsbm93LmJnL2xvZ2luLmFzcHg=')
+loginred = base64.b64decode('aHR0cHM6Ly9tdGVsbm93LmJnL2xvZ2luP3E9dXNlckxvZ2lu')
+dns = base64.b64decode('bXRlbG5vdy5iZw==')
+baseurl = base64.b64decode('aHR0cHM6Ly93d3cubXRlbG5vdy5iZy9ub3c=')
+item = base64.b64decode('aHR0cHM6Ly93d3cubXRlbG5vdy5iZy9Ob3dPblR2LmFzcHgvR2V0SXRlbURldGFpbHM=')
+m1 = base64.b64decode('d3d3Lm10ZWxub3cuYmc=')
+m2 = base64.b64decode('aHR0cHM6Ly93d3cubXRlbG5vdy5iZw==')
 live = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFJlc291cmNlcy9tdGVsL2ljb25fbGl2ZXR2LnBuZw==')
 recs = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFJlc291cmNlcy9tdGVsL2hvbWVfdGlsZV9teXJlY29yZGluZ3MucG5n')
-dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'
 #UA = 'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko'
 username = xbmcaddon.Addon().getSetting('settings_username')
@@ -73,7 +72,7 @@ for viewstate in match1:
 
 #Меню с директории в приставката
 def CATEGORIES():
-        #addDir('[COLOR FFffEE0937]НЕ ПРОПУСКАЙТЕ[/COLOR]', 'https://'+dns+'/home',5, live)
+        addDir('[COLOR FFffEE0937]НЕ ПРОПУСКАЙТЕ[/COLOR]', 'https://'+dns+'/home',5, live)
         addDir('[COLOR FFffEE0937]Телевизия[/COLOR]', baseurl , 1, live)
         addDir('[COLOR FFffEE0937]Моите Записи[/COLOR]', 'https://'+dns+'/npvr' , 3, recs)
         
@@ -95,17 +94,12 @@ def INDEXPAGES(url):
 
 #Зареждане на видео
 def PLAY(url):
-         #xbmcgui.Dialog().ok('Търсене на излъчване',name+'Моля натиснете ОК!')
          match0 = re.compile('(.+?)@(.*)').findall(url)
          for url1, chnum in match0:
-          #print url1
-          #print chnum
           pd = '{"referenceId":' + '"' + chnum + '"' + ',"type":"live","source":"nowontv, startchannellivestream"}'
           postdata = {"clientAssetData":pd}
           data = json.dumps(postdata)
-          #print postdata
           req = urllib2.Request(url1, data)
-          #print req
           req.add_header('Host', m1)
           req.add_header('Connection', 'keep-alive')
           req.add_header('Origin', m2)
@@ -119,8 +113,8 @@ def PLAY(url):
           opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
           f = opener.open(req)
           data = f.read()
-          #print data
-          #dt_custom_data = base64.b64encode(data)
+          dt_custom_data = base64.b64encode(data)
+          dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
           match = re.compile('streamURL.":.+?(https.+?mpd)').findall(data)
           for ism in match:
            ism = ism.replace('\/','/')
@@ -130,20 +124,17 @@ def PLAY(url):
            li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
            li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
            li.setMimeType('application/dash+xml')
-           #li.setContentLookup(False)
            try:
               xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
            except:
               xbmc.executebuiltin("Notification('Грешка','Видеото липсва на сървъра!')")
 
 def INDEXZAPISI(url):
-        #print url
         req = urllib2.Request(url)
         req.add_header('User-Agent', UA)
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
         f = opener.open(req)
         data = f.read()
-        #print data
         match = re.compile('data-channelrefid="(.+?)"\s+\n.*\s+\n.*\s+\n.*\s+\n.*\s+\n.*src=.+?url=(.+?jpg).*\s+\n.*\s+.*<span>(.+?)</span>.*\s+\n.*\s+\n.*\s+.*\s+.*>(.+?)</div>\s+.*>(.+?)</div>').findall(data)
         for chnum,thumbnail,zaglavie,chas,kanal in match:
           desc = 'Час:' + chas
@@ -158,14 +149,12 @@ def INDEXZAPISI(url):
             addLink(title,url+'@'+chnum+'@'+nachalo+'@'+krai+'@'+data,4,desc,thumbnail,fanart)
 
 def PLAYNPVR(url):
-         #xbmcgui.Dialog().ok('Търсене на излъчване',name+'Моля натиснете ОК!')
          match0 = re.compile('(.+?)@(.+?)@(.+?)@(.+?)@(.*)').findall(url)
          for url1,chnum,nachalo,krai,data1 in match0:
           pd = '{"referenceId":' + '"' + chnum + '"' + ',"type":"live","source":"nowontv, startchannellivestream"}'
           postdata = {"clientAssetData":pd}
           data = json.dumps(postdata)
           req = urllib2.Request(url1, data)
-          #print req
           req.add_header('Host', m1)
           req.add_header('Connection', 'keep-alive')
           req.add_header('Origin', m2)
@@ -179,6 +168,8 @@ def PLAYNPVR(url):
           opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
           f = opener.open(req)
           data = f.read()
+          dt_custom_data = base64.b64encode(data)
+          dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
           match = re.compile('streamURL.":.+?(https.+?mpd)').findall(data)
           for ism in match:
            ism = ism.replace('\/','/')
@@ -186,8 +177,11 @@ def PLAYNPVR(url):
            ism = ism.replace('Channel(','Channel(name=')
            ism = ism.replace(')/manifest.mpd','')
            now = datetime.datetime.now()
-           nachaloto = datetime.datetime.strptime((str(data1)+str(now.year)+' '+nachalo),'%d.%m.%Y %H:%M')
-           kraqt = datetime.datetime.strptime((str(data1)+str(now.year)+' '+krai), '%d.%m.%Y %H:%M')
+           first = str(data1)+str(now.year)+' '+nachalo
+           print first
+           nachaloto = datetime.datetime.strptime(first,'%d.%m.%Y %H:%M')
+           end = str(data1)+str(now.year)+' '+krai
+           kraqt = datetime.datetime.strptime(end, '%d.%m.%Y %H:%M')
            start = time.mktime(nachaloto.timetuple())
            start = str(start).replace('.','')+str('000000')
            stop = time.mktime(kraqt.timetuple())
@@ -199,7 +193,6 @@ def PLAYNPVR(url):
            li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
            li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
            li.setMimeType('application/dash+xml')
-           #li.setContentLookup(False)
            try:
               xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
            except:
@@ -218,26 +211,25 @@ def PREPORACHANO(url):
           fanart = thumbnail
           url = item
           print date
-          match1 = re.compile('.* (\d+.\d+.\d+).*(\d\d+:\d+) - \d+:\d+').findall(date)
-          for dates,chas in match1:
-           print dates
-           print chas
-           datata = str(dates)+' '+chas
-           print '|'+datata+'|'
-           startat = datetime.datetime.strptime(str(datata), '%d.%m.%Y %H:%M')
+          match1 = re.compile('.* (\d+.\d+.\d+).*(\d\d+:\d+) - (\d+:\d+)').findall(date)
+          for dates,nachalo,krai in match1:
+           nachaloto = str(dates)+' '+nachalo
+           startat = datetime.datetime.strptime(str(nachaloto), '%d.%m.%Y %H:%M')
            start = time.mktime(startat.timetuple())
            start = str(start).replace('.','')+str('000000')
+           kraqt = str(dates)+' '+krai
+           theend = datetime.datetime.strptime(str(kraqt), '%d.%m.%Y %H:%M')
+           stop = time.mktime(startat.timetuple())
+           stop = str(start).replace('.','')+str('000000')
            addLink(title,url+'@'+chnum+'@'+start+'@'+stop,6,desc,thumbnail,fanart)
 
 def PLAYPREPORACHANO(url):
-         #xbmcgui.Dialog().ok('Търсене на излъчване',name+'Моля натиснете ОК!')
          match0 = re.compile('(.+?)@(.+?)@(.+?)@(.*)').findall(url)
          for url1,chnum,nachalo,krai in match0:
           pd = '{"referenceId":' + '"' + chnum + '"' + ',"type":"live","source":"nowontv, startchannellivestream"}'
           postdata = {"clientAssetData":pd}
           data = json.dumps(postdata)
           req = urllib2.Request(url1, data)
-          #print req
           req.add_header('Host', m1)
           req.add_header('Connection', 'keep-alive')
           req.add_header('Origin', m2)
@@ -251,7 +243,8 @@ def PLAYPREPORACHANO(url):
           opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
           f = opener.open(req)
           data = f.read()
-          print data
+          dt_custom_data = base64.b64encode(data)
+          dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
           match = re.compile('streamURL.":.+?(https.+?mpd)').findall(data)
           for ism in match:
            ism = ism.replace('\/','/')
@@ -266,7 +259,6 @@ def PLAYPREPORACHANO(url):
            li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
            li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
            li.setMimeType('application/dash+xml')
-           #li.setContentLookup(False)
            try:
               xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
            except:
