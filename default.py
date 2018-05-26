@@ -18,13 +18,13 @@ import time
 __addon_id__= 'plugin.video.mtelnow'
 __Addon = xbmcaddon.Addon(__addon_id__)
 __settings__ = xbmcaddon.Addon(id='plugin.video.mtelnow')
-login = base64.b64decode('aHR0cHM6Ly9tdGVsbm93LmJnL2xvZ2luLmFzcHg=')
-loginred = base64.b64decode('aHR0cHM6Ly9tdGVsbm93LmJnL2xvZ2luP3E9dXNlckxvZ2lu')
-dns = base64.b64decode('bXRlbG5vdy5iZw==')
-baseurl = base64.b64decode('aHR0cHM6Ly93d3cubXRlbG5vdy5iZy9ub3c=')
-item = base64.b64decode('aHR0cHM6Ly93d3cubXRlbG5vdy5iZy9Ob3dPblR2LmFzcHgvR2V0SXRlbURldGFpbHM=')
-m1 = base64.b64decode('d3d3Lm10ZWxub3cuYmc=')
-m2 = base64.b64decode('aHR0cHM6Ly93d3cubXRlbG5vdy5iZw==')
+login = base64.b64decode('aHR0cHM6Ly9hMW5vdy5iZy9sb2dpbi5hc3B4')
+loginred = base64.b64decode('aHR0cHM6Ly9hMW5vdy5iZy9sb2dpbj9xPXVzZXJMb2dpbg==')
+dns = base64.b64decode('YTFub3cuYmc=')
+baseurl = base64.b64decode('aHR0cHM6Ly93d3cuYTFub3cuYmcvbm93')
+item = base64.b64decode('aHR0cHM6Ly93d3cuYTFub3cuYmcvTm93T25Udi5hc3B4L0dldEl0ZW1EZXRhaWxz')
+m1 = base64.b64decode('d3d3LmExbm93LmJn')
+m2 = base64.b64decode('aHR0cHM6Ly93d3cuYTFub3cuYmc=')
 live = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFJlc291cmNlcy9tdGVsL2ljb25fbGl2ZXR2LnBuZw==')
 recs = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFJlc291cmNlcy9tdGVsL2hvbWVfdGlsZV9teXJlY29yZGluZ3MucG5n')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'
@@ -72,7 +72,7 @@ for viewstate in match1:
 
 #Меню с директории в приставката
 def CATEGORIES():
-        addDir('[COLOR FFffEE0937]НЕ ПРОПУСКАЙТЕ[/COLOR]', 'https://'+dns+'/home',5, live)
+        #addDir('[COLOR FFffEE0937]НЕ ПРОПУСКАЙТЕ[/COLOR]', 'https://'+dns+'/home',5, live)
         addDir('[COLOR FFffEE0937]Телевизия[/COLOR]', baseurl , 1, live)
         addDir('[COLOR FFffEE0937]Моите Записи[/COLOR]', 'https://'+dns+'/npvr' , 3, recs)
         
@@ -118,6 +118,16 @@ def PLAY(url):
           match = re.compile('streamURL.":.+?(https.+?mpd)').findall(data)
           for ism in match:
            ism = ism.replace('\/','/')
+           payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
+           response = xbmc.executeJSONRPC(json.dumps(payload))
+           data2 = json.loads(response)
+           version = data2['result']['addon']['version'].replace(".","")
+           if version < 2211:
+            xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
+           if version < 2215:
+            print 'All okay!'
+           if version > 2215:
+            ism = ism.replace('https','http')            
            li = xbmcgui.ListItem(path=ism)
            li.setProperty('inputstreamaddon', 'inputstream.adaptive')
            li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
@@ -188,6 +198,16 @@ def PLAYNPVR(url):
            stop = str(stop).replace('.','')+str('000000')
            mpdurl = ism + ',startTime=' + str(start) + ',endTime=' + str(stop) + ')/manifest.mpd'
            li = xbmcgui.ListItem(path=mpdurl)
+           payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
+           response = xbmc.executeJSONRPC(json.dumps(payload))
+           data2 = json.loads(response)
+           version = data2['result']['addon']['version'].replace(".","")
+           if version < 2211:
+            xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
+           if version < 2215:
+            print 'All okay!'
+           if version > 2215:
+            mpdurl = mpdurl.replace('https','http')        
            li.setProperty('inputstreamaddon', 'inputstream.adaptive')
            li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
            li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
@@ -254,6 +274,16 @@ def PLAYPREPORACHANO(url):
            now = datetime.datetime.now()
            mpdurl = ism + ',startTime=' + str(nachalo) + ',endTime=' + str(krai) + ')/manifest.mpd'
            li = xbmcgui.ListItem(path=mpdurl)
+           payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
+           response = xbmc.executeJSONRPC(json.dumps(payload))
+           data2 = json.loads(response)
+           version = data2['result']['addon']['version'].replace(".","")
+           if version < 2211:
+            xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
+           if version < 2215:
+            print 'All okay!'
+           if version > 2215:
+            mpdurl = mpdurl.replace('https','http') 
            li.setProperty('inputstreamaddon', 'inputstream.adaptive')
            li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
            li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
