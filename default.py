@@ -72,9 +72,9 @@ for viewstate in match1:
 
 #Меню с директории в приставката
 def CATEGORIES():
-        #addDir('[COLOR FFffEE0937]НЕ ПРОПУСКАЙТЕ[/COLOR]', 'https://'+dns+'/home',5, live)
-        addDir('[COLOR FFffEE0937]Телевизия[/COLOR]', baseurl , 1, live)
-        addDir('[COLOR FFffEE0937]Моите Записи[/COLOR]', 'https://'+dns+'/npvr' , 3, recs)
+        #addDir('НЕ ПРОПУСКАЙТЕ', 'https://'+dns+'/home',5, live)
+        addDir('Телевизия', baseurl , 1, live)
+        addDir('Моите Записи', 'https://'+dns+'/npvr' , 3, recs)
         
 
 #Разлистване видеата на първата подадена страница
