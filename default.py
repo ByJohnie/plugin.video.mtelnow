@@ -84,12 +84,13 @@ def INDEXPAGES(url):
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
         f = opener.open(req)
         data = f.read()
-        match = re.compile('<img src="(.+?)" />\r\n.*<div class="title"><span>(.+?)</span></div>\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*refid="(.+?)"\r\n.*\r\n.*\r\n.*\r\n.*(https.+?jpg).*\r\n.*\r\n.*<span>(.+?)</span>').findall(data)
-        for thumbnail,title,chnum,fanart,vmomenta in match:
-          desc = 'В момента:' + vmomenta
+        #match = re.compile('<img src="(.+?)" />\r\n.*<div class="title"><span>(.+?)</span></div>\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*refid="(.+?)"\r\n.*\r\n.*\r\n.*\r\n.*(https.+?jpg).*\r\n.*\r\n.*<span>(.+?)</span>').findall(data)
+        match = re.compile(' data-chrefid="(.+?)">\r\n.*\r\n.*\r\n.*<img id=".*" src="(.+?)" />\r\n.*<div class="title">\r\n.*<span id=".*">(.+?)</span>\r\n.*\r\n.*<div class="num">\r\n\s*(.+?)\r\n.*</div>\r\n.*\r\n.*\r\n.*\r\n.*<img id=".*" class="thumb".*src="(.+?)" />\r\n.*\r\n.*\r\n.*<span id=".*">(.+?)</span>').findall(data)
+        for chrefid,thumbnail,title,chnum,fanart,vmomenta in match:
+          desc = 'В момента: ' + vmomenta
           fanart = urllib.unquote(fanart)
           url = item
-          addLink(title,url+'@'+chnum,2,desc,thumbnail,fanart)
+          addLink(title+' - '+vmomenta, url+'@'+chrefid, 2, desc, thumbnail, fanart)
 
 
 #Зареждане на видео
