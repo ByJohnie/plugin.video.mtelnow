@@ -13,6 +13,7 @@ from time import localtime, strftime, gmtime
 import json
 import datetime
 import time
+import md5
 
 #Място за дефиниране на константи, които ще се използват няколкократно из отделните модули
 __addon_id__= 'plugin.video.mtelnow'
@@ -27,10 +28,12 @@ m1 = base64.b64decode('YTF4cGxvcmV0di5iZw==')
 m2 = base64.b64decode('aHR0cHM6Ly9hMXhwbG9yZXR2LmJn')
 live = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFJlc291cmNlcy9tdGVsL2ljb25fbGl2ZXR2LnBuZw==')
 recs = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFJlc291cmNlcy9tdGVsL2hvbWVfdGlsZV9teXJlY29yZGluZ3MucG5n')
+recs_url = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFNlcnZpY2Uuc3ZjL3Jlc3RzZXJ2aWNlL05QVlJHZXRCeUN1c3RvbWVyUmVmZXJlbmNlSURXaXRob3V0T3V0cHV0UGFyYW1z')
 UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'
 #UA = 'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko'
 username = xbmcaddon.Addon().getSetting('settings_username')
 password = xbmcaddon.Addon().getSetting('settings_password')
+customerReferenceId = xbmcaddon.Addon().getSetting('customerReferenceId')
 if not username or not password or not __settings__:
         xbmcaddon.Addon().openSettings()
 #Инициализация
@@ -69,12 +72,16 @@ for viewstate in match1:
     opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
     f = opener.open(req)
     data = f.read()
+    match = re.compile('<input type="hidden" id="customerReferenceId" value="(.+?)" />').findall(data)
+    for cRId in match:
+       xbmcaddon.Addon().setSetting('customerReferenceId', cRId)
+    
 
 #Меню с директории в приставката
 def CATEGORIES():
         #addDir('НЕ ПРОПУСКАЙТЕ', 'https://'+dns+'/home',5, live)
-        addDir('Телевизия', baseurl , 1, live)
-        addDir('Моите Записи', 'https://'+dns+'/npvr' , 3, recs)
+        addDir('Телевизия', baseurl, 1, live)
+        addDir('Моите Записи', recs_url, 3, recs)
         
 
 #Разлистване видеата на първата подадена страница
@@ -141,27 +148,31 @@ def PLAY(url):
               xbmc.executebuiltin("Notification('Грешка','Видеото липсва на сървъра!')")
 
 def INDEXZAPISI(url):
-        req = urllib2.Request(url)
+        pd = '{"customerReferenceID":"'+customerReferenceId+'","deviceType":"118","deviceSerial":"'+str(uuid.uuid5(uuid.NAMESPACE_DNS, dns))+'","operatorReferenceID":"A1_bulgaria","username":"'+username+'","password":"{md5}'+md5.new(password).hexdigest()+'"}'
+        req = urllib2.Request(url, pd)
         req.add_header('User-Agent', UA)
+        req.add_header('Content-Type', 'application/json; charset=UTF-8')
         opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
         f = opener.open(req)
         data = f.read()
-        match = re.compile('data-channelrefid="(.+?)"\s+\n.*\s+\n.*\s+\n.*\s+\n.*\s+\n.*src=.+?url=(.+?jpg).*\s+\n.*\s+.*<span>(.+?)</span>.*\s+\n.*\s+\n.*\s+.*\s+.*>(.+?)</div>\s+.*>(.+?)</div>').findall(data)
-        for chnum,thumbnail,zaglavie,chas,kanal in match:
-          desc = 'Час:' + chas
-          thumbnail = urllib.unquote_plus(thumbnail)
+        json_data = json.loads(data)
+        #xbmc.log(json.dumps(),xbmc.LOGNOTICE)
+        for rec_item in json_data['NPVRGetByCustomerReferenceIDWithoutOutputParamsResult']:
+          #xbmc.log(json.dumps(type(rec_item['TimeStart'])),xbmc.LOGNOTICE)
+          starttimestamp = int(rec_item['TimeStart'].encode('utf8')[6:19])
+          endtimestamp = int(rec_item['TimeEnd'].encode('utf8')[6:19])
+          starttime = datetime.datetime.utcfromtimestamp(starttimestamp / 1e3 + 60*60*2)
+          endtime = datetime.datetime.utcfromtimestamp(endtimestamp / 1e3 + 60*60*2)
+          desc = 'Час: ' + starttime.strftime('%d.%m.%Y %H:%M') + ' ' + endtime.strftime('%d.%m.%Y %H:%M')
+          thumbnail = urllib.unquote_plus(rec_item['ImagePath'])
           fanart = thumbnail
           url = item
-          title = zaglavie +' '+kanal
-          match1 =  re.compile('(.+?) - (.*)').findall(chas)
-          for nachalo,krai in match1:
-           match2 = re.compile('(.+?) /').findall(kanal)
-           for data in match2:
-            addLink(title,url+'@'+chnum+'@'+nachalo+'@'+krai+'@'+data,4,desc,thumbnail,fanart)
+          title = starttime.strftime('%d.%m %H:%M') + ' ' + rec_item['ChannelName'].encode('utf8') + ' ' + rec_item['Title'].encode('utf8')
+          addLink(title, url+'@'+rec_item['ChannelReferenceID'].encode('utf8')+'@'+str(starttimestamp)+'@'+str(endtimestamp)+'@', 4, desc, thumbnail, fanart)
 
 def PLAYNPVR(url):
-         match0 = re.compile('(.+?)@(.+?)@(.+?)@(.+?)@(.*)').findall(url)
-         for url1,chnum,nachalo,krai,data1 in match0:
+         match0 = re.compile('(.+?)@(.+?)@(.+?)@(.+?)@').findall(url)
+         for url1, chnum, nachalo, krai in match0:
           pd = '{"referenceId":' + '"' + chnum + '"' + ',"type":"live","source":"nowontv, startchannellivestream"}'
           postdata = {"clientAssetData":pd}
           data = json.dumps(postdata)
@@ -187,16 +198,8 @@ def PLAYNPVR(url):
            ism = ism.replace('Live','Catchup')
            ism = ism.replace('Channel(','Channel(name=')
            ism = ism.replace(')/manifest.mpd','')
-           now = datetime.datetime.now()
-           first = str(data1)+str(now.year)+' '+nachalo
-           print first
-           nachaloto = datetime.datetime.strptime(first,'%d.%m.%Y %H:%M')
-           end = str(data1)+str(now.year)+' '+krai
-           kraqt = datetime.datetime.strptime(end, '%d.%m.%Y %H:%M')
-           start = time.mktime(nachaloto.timetuple())
-           start = str(start).replace('.','')+str('000000')
-           stop = time.mktime(kraqt.timetuple())
-           stop = str(stop).replace('.','')+str('000000')
+           start = nachalo + str('0000')
+           stop = krai + str('0000')
            mpdurl = ism + ',startTime=' + str(start) + ',endTime=' + str(stop) + ')/manifest.mpd'
            li = xbmcgui.ListItem(path=mpdurl)
            payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
