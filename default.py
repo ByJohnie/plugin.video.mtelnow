@@ -1,19 +1,15 @@
 # -*- coding: utf-8 -*-
 #Библиотеки, които използват python и Kodi в тази приставка
-import re
 import sys
 import os
 import urllib
 import urllib2
 import urlparse
-import cookielib
 import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import base64
 import uuid
-from time import localtime, strftime, gmtime
 import json
 import datetime
-import time
 import md5
 
 base_url = sys.argv[0]
@@ -40,7 +36,7 @@ if not username or not password or not xbmcaddon.Addon():
 def CATEGORIES():
     #addDir('НЕ ПРОПУСКАЙТЕ', 'https://'+dns+'/home',5, live)
     addDir('index', 'Телевизия', "https://tagott.vip.hr/OTTResources/mtel/icon_livetv.png")
-    #addDir('program', 'Програма', "https://tagott.vip.hr/OTTResources/mtel/icon_tvschedule.png")
+    addDir('index_program', 'Програма', "https://tagott.vip.hr/OTTResources/mtel/icon_tvschedule.png")
     addDir('index_zapisi', 'Моите Записи', "https://tagott.vip.hr/OTTResources/mtel/home_tile_myrecordings.png")
 
 def _byteify(data, ignore_dicts = False):
@@ -65,7 +61,7 @@ def _byteify(data, ignore_dicts = False):
 
 #изпращане на requst към endpoint
 def request(action, params={}):
-    global customerReferenceID
+    global customer_reference_id
     endpoint = 'https://tagott.vip.hr/OTTService.svc/restservice/'
     data = {'deviceType': "118",
             'deviceSerial': deviceSerial,
@@ -84,15 +80,40 @@ def request(action, params={}):
 
 # Аутентикация
 login = request('CustomerLoginGlobal', {'DRMID': deviceSerial, 'operatorExternalID': "A1_bulgaria"})
-customerReferenceID = login['myCustomer']['AdditionalIdentifiers'][0]['CustomerReferenceId']
+server_time = login['ServerTime']
+customer_reference_id = login['myCustomer']['AdditionalIdentifiers'][0]['CustomerReferenceId']
 
 #Списък с каналите за изграждане на програма
-def PROGRAM():
-    channels = request('ChannelGetByDeviceInstance', {'customerReferenceID': customerReferenceID})
+def INDEXPROGRAM():
+    channels = request('ChannelGetByDeviceInstance', {'customerReferenceID': customer_reference_id})
+    for channel in channels:
+        addDir('program', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'ChannelReferenceID': channel['ReferenceID']})
+
+def PROGRAM(args):
+    global server_time
+    channel_ref_id = args.get('ChannelReferenceID')[0]
+    days = int(args.get('days',[1])[0])
+    #if days > 1:
+    #    addDir('program', ' >> ' + (server_time - datetime.timedelta(days=days-1)).strftime('%Y-%m-%d'), '', {'ChannelReferenceID':channel_ref_id, 'days': days - 1})
+    date = server_time - datetime.timedelta(days=days, hours=1)
+    epg = request('EPGGetByChannelReferenceIDForDate', 
+                    {'customerReferenceID': customer_reference_id, 
+                     'channelReferenceID': channel_ref_id, 
+                     'date': date.strftime('%Y-%m-%dT%H:%M')})
+    for rec in reversed(epg):
+        time_end = rec['TimeEnd']
+        time_start = rec['TimeStart']
+        desc = 'Час: ' + time_start.strftime('%d.%m.%Y %H:%M') + ' - ' + time_end.strftime('%H:%M')
+        title = time_start.strftime('%H:%M') + ' ' + time_end.strftime('%H:%M') + ' ' + rec['Title']
+        addLink('playepg', title, rec['ImagePath'],
+                {'EPGReferenceID': rec['ReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
+                desc, rec['ImagePath'])
+    addDir('program', ' << ' + date.strftime('%Y-%m-%d'), '', {'ChannelReferenceID':channel_ref_id, 'days': days + 1})
+
 
 #Разлистване видеата на първата подадена страница
 def INDEXPAGES():
-    channels = request('ChannelGetByDeviceInstance', {'customerReferenceID': customerReferenceID})
+    channels = request('ChannelGetByDeviceInstance', {'customerReferenceID': customer_reference_id})
     for channel in channels:
         addLink('play', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'path': channel['StreamingURL']}, channel['CurrentProgramme'], channel['Icon'])
 
@@ -101,7 +122,7 @@ def PLAY(args):
     path = args.get('path')[0]
     PLAYPATH(path)
 
-def PLAYPATH(path):
+def PLAYPATH(path, title = "", plot=""):
     payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
     response = xbmc.executeJSONRPC(json.dumps(payload))
     data = json.loads(response)
@@ -115,6 +136,8 @@ def PLAYPATH(path):
     dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
     li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
     li.setMimeType('application/dash+xml')
+    if title and plot:
+        li.setInfo( type="Video", infoLabels={ "Title": title, "plot": plot})
     try:
         xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
     except:
@@ -125,13 +148,16 @@ def PLAYEPG(args):
     channel_ref_id = args.get('ChannelReferenceID')[0]
     
     epg_details = request('EPGGetDetailsWithoutOutputParams', 
-                            {'customerReferenceID': customerReferenceID,
+                            {'customerReferenceID': customer_reference_id,
                              'channelReferenceID': channel_ref_id,
                              'epgReferenceID': epg_ref_id})
-    PLAYPATH(epg_details['FileName'])
+    path = epg_details['FileName']
+    if path.find('/Live/') > 0:
+        path = epg_details['FileNameStartOver']
+    PLAYPATH(path, title=epg_details['Title'], plot=epg_details["DescriptionLong"])
 
 def INDEXZAPISI():
-    recs = request('NPVRGetByCustomerReferenceIDWithoutOutputParams', {'customerReferenceID': customerReferenceID})
+    recs = request('NPVRGetByCustomerReferenceIDWithoutOutputParams', {'customerReferenceID': customer_reference_id})
     for rec in recs:
         time_end = rec['TimeEnd']
         time_start = rec['TimeStart']
@@ -183,6 +209,8 @@ elif mode[0] == 'index_zapisi':
 elif mode[0] == 'playepg':
         PLAYEPG(args)
 elif mode[0] == 'program':
-        PROGRAM()
+        PROGRAM(args)
+elif mode[0] == 'index_program':
+        INDEXPROGRAM()
         
 xbmcplugin.endOfDirectory(addon_handle)
