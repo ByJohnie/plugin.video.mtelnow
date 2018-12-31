@@ -113,9 +113,19 @@ def PROGRAM(args):
 
 #Разлистване видеата на първата подадена страница
 def INDEXPAGES():
-    channels = request('ChannelGetByDeviceInstance', {'customerReferenceID': customer_reference_id})
+    channels = request('ChannelGetByDeviceInstanceExtended', {'customerReferenceID': customer_reference_id})
     for channel in channels:
-        addLink('play', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'path': channel['StreamingURL']}, channel['CurrentProgramme'], channel['Icon'])
+        time_end = channel['CurrentProgrammeStopTime']
+        time_start = channel['CurrentProgrammeStartTime']
+        funart = channel['Icon']
+        if 'CurrentProgrammeImagePath' in channel:
+            funart = channel['CurrentProgrammeImagePath']
+        addLink('play', 
+                  channel['Name'] + ' - ' + time_start.strftime('%H:%M') + ' ' + time_end.strftime('%H:%M') + ' - ' + channel['CurrentProgramme'],
+                  channel['Icon'],
+                  {'path': channel['StreamingURL']},
+                  channel['CurrentProgramme'],
+                  funart)
 
 #Зареждане на видео
 def PLAY(args):
