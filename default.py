@@ -85,9 +85,12 @@ customer_reference_id = login['myCustomer']['AdditionalIdentifiers'][0]['Custome
 
 #Списък с каналите за изграждане на програма
 def INDEXPROGRAM():
-    channels = request('ChannelGetByDeviceInstance', {'customerReferenceID': customer_reference_id})
+    channels = request('ChannelGetByDeviceInstanceExtended', {'customerReferenceID': customer_reference_id})
     for channel in channels:
-        addDir('program', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'ChannelReferenceID': channel['ReferenceID']})
+        funart = channel['Icon']
+        if 'CurrentProgrammeImagePath' in channel:
+            funart = channel['CurrentProgrammeImagePath']
+        addDir('program', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'ChannelReferenceID': channel['ReferenceID']}, funart)
 
 def PROGRAM(args):
     global server_time
