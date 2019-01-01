@@ -37,6 +37,7 @@ def CATEGORIES():
     #addDir('НЕ ПРОПУСКАЙТЕ', 'https://'+dns+'/home',5, live)
     addDir('index', 'Телевизия', "https://tagott.vip.hr/OTTResources/mtel/icon_livetv.png")
     addDir('index_program', 'Програма', "https://tagott.vip.hr/OTTResources/mtel/icon_tvschedule.png")
+    #addDir('index_vod', 'Видеотека', "https://tagott.vip.hr/OTTResources/mtel/icon_videostore.png")
     addDir('index_zapisi', 'Записи', "https://tagott.vip.hr/OTTResources/mtel/home_tile_myrecordings.png")
 
 def _byteify(data, ignore_dicts = False):
@@ -82,6 +83,7 @@ def request(action, params={}):
 login = request('CustomerLoginGlobal', {'DRMID': deviceSerial, 'operatorExternalID': "A1_bulgaria"})
 server_time = login['ServerTime']
 customer_reference_id = login['myCustomer']['AdditionalIdentifiers'][0]['CustomerReferenceId']
+language_reference_id = login['myCustomer']['LanguageExternalID']
 
 #Списък с каналите за изграждане на програма
 def INDEXPROGRAM():
@@ -96,8 +98,6 @@ def PROGRAM(args):
     global server_time
     channel_ref_id = args.get('ChannelReferenceID')[0]
     days = int(args.get('days',[1])[0])
-    #if days > 1:
-    #    addDir('program', ' >> ' + (server_time - datetime.timedelta(days=days-1)).strftime('%Y-%m-%d'), '', {'ChannelReferenceID':channel_ref_id, 'days': days - 1})
     date = server_time - datetime.timedelta(days=days, hours=1)
     epg = request('EPGGetByChannelReferenceIDForDate', 
                     {'customerReferenceID': customer_reference_id, 
@@ -180,6 +180,44 @@ def INDEXZAPISI():
                 {'EPGReferenceID': rec['EPGReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
                 desc, rec['ImagePath'])
         
+def INDEXVOD():
+    items = request('VideostoreItemGetChildrenCatalogue', 
+                     {'languageReferenceID': language_reference_id})
+    for item in items:
+        addDir('index_vod_cat', item['Name'], item['Icon'], {'ReferenceID': item['ReferenceID']})
+
+def INDEXVODCAT(args):
+    ref_id = args.get('ReferenceID')[0]
+    items = request('VideostoreItemGetChildrenCatalogue', 
+                     {'languageReferenceID': language_reference_id, 
+                      'catalogueReferenceID': ref_id})
+    for item in items:
+        if item['Type'] == 'series':
+            funart = item['PosterLandscape']
+            if not funart:
+                funart = item['PosterPortrait']
+            addDir('index_vod_series', item['Name'], item['PosterPortrait'], {'ReferenceID': item['ReferenceID']}, funart, item['DescriptionShort'])
+
+def INDEXVODSERIES(args):
+    ref_id = args.get('ReferenceID')[0]
+    s_ref_id = args.get('seasonReferenceID',[''])[0]
+    items = request('SeriesGetContent', 
+                     {'languageReferenceID': language_reference_id, 
+                      'seriesReferenceID': ref_id,
+                      'seasonReferenceID': s_ref_id})
+    for item in items:
+        print(item)
+        funart = item['PosterLandscape']
+        if not funart:
+            funart = item['PosterPortrait']
+        if item['Type'] == 'season':
+            addDir('index_vod_series', item['Name'], funart, {'seasonReferenceID': item['ReferenceID'], 'ReferenceID': ref_id}, funart)
+        else:
+            plot = ''
+            if 'DescriptionShort' in item:
+                plot = item['DescriptionShort']
+            addDir('index_vod_series', 'S' + str(item['SeasonNr']) + ' E' + str(item['EpisodeNr']) + ' ' + item['Name'], funart, {'seasonReferenceID': item['ReferenceID'], 'ReferenceID': ref_id}, funart, plot)
+
 #Модул за добавяне на отделно заглавие и неговите атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
 def addLink(mode, name, iconimage, params={}, plot="", fanart=""):
     query = {'mode': mode}
@@ -188,12 +226,12 @@ def addLink(mode, name, iconimage, params={}, plot="", fanart=""):
     url = build_url(query)
     li = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
     li.setArt({ 'thumb': iconimage,'poster': fanart, 'banner' : fanart, 'fanart': fanart })
-    li.setInfo( type="Video", infoLabels={ "Title": name, "plot": plot })
+    li.setInfo( type="Video", infoLabels={"Title": name, "plot": plot})
     li.setProperty("IsPlayable" , "true")
     return xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=li, isFolder=False)
 
 #Модул за добавяне на отделна директория и нейните атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def addDir(mode, name, iconimage, params={}, funart=""):
+def addDir(mode, name, iconimage, params={}, funart="", plot=""):
     query = {'mode': mode}
     if params:
         query.update(params)
@@ -202,13 +240,9 @@ def addDir(mode, name, iconimage, params={}, funart=""):
         funart = iconimage
     li = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
     li.setArt({ 'thumb': iconimage,'poster': funart, 'banner': funart, 'fanart': funart })
-    li.setInfo( type="Video", infoLabels={ "Title": name })
+    li.setInfo( type="Video", infoLabels={"Title": name, "plot": plot})
     return xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
-
-#НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def build_url(query):
-    return base_url + '?' + urllib.urlencode(query)
 
 mode = args.get('mode', None)
 
@@ -221,6 +255,12 @@ elif mode[0] == 'play':
         PLAY(args)
 elif mode[0] == 'index_zapisi':
         INDEXZAPISI()
+elif mode[0] == 'index_vod':
+        INDEXVOD()
+elif mode[0] == 'index_vod_cat':
+        INDEXVODCAT(args)
+elif mode[0] == 'index_vod_series':
+        INDEXVODSERIES(args)
 elif mode[0] == 'playepg':
         PLAYEPG(args)
 elif mode[0] == 'program':
