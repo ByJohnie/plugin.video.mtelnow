@@ -190,13 +190,15 @@ def addLink(mode, name, iconimage, params={}, plot="", fanart=""):
     return xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=li, isFolder=False)
 
 #Модул за добавяне на отделна директория и нейните атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def addDir(mode, name, iconimage, params={}):
+def addDir(mode, name, iconimage, params={}, funart=""):
     query = {'mode': mode}
     if params:
         query.update(params)
     url = build_url(query)
+    if not funart:
+        funart = iconimage
     li = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
-    li.setArt({ 'thumb': iconimage,'poster': iconimage, 'banner': iconimage, 'fanart': iconimage })
+    li.setArt({ 'thumb': iconimage,'poster': funart, 'banner': funart, 'fanart': funart })
     li.setInfo( type="Video", infoLabels={ "Title": name })
     return xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
