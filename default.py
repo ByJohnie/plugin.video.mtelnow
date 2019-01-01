@@ -37,7 +37,7 @@ def CATEGORIES():
     #addDir('НЕ ПРОПУСКАЙТЕ', 'https://'+dns+'/home',5, live)
     addDir('index', 'Телевизия', "https://tagott.vip.hr/OTTResources/mtel/icon_livetv.png")
     addDir('index_program', 'Програма', "https://tagott.vip.hr/OTTResources/mtel/icon_tvschedule.png")
-    addDir('index_zapisi', 'Моите Записи', "https://tagott.vip.hr/OTTResources/mtel/home_tile_myrecordings.png")
+    addDir('index_zapisi', 'Записи', "https://tagott.vip.hr/OTTResources/mtel/home_tile_myrecordings.png")
 
 def _byteify(data, ignore_dicts = False):
     # if this is a unicode string, return its string representation
