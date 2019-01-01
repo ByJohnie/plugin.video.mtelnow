@@ -157,7 +157,7 @@ def PLAYEPG(args):
     epg_ref_id = args.get('EPGReferenceID')[0]
     channel_ref_id = args.get('ChannelReferenceID')[0]
     
-    epg_details = request('EPGGetDetailsWithoutOutputParams', 
+    epg_details = request('EPGGetDetails', 
                             {'customerReferenceID': customer_reference_id,
                              'channelReferenceID': channel_ref_id,
                              'epgReferenceID': epg_ref_id})
@@ -167,7 +167,7 @@ def PLAYEPG(args):
     PLAYPATH(path, title=epg_details['Title'], plot=epg_details["DescriptionLong"])
 
 def INDEXZAPISI():
-    recs = request('NPVRGetByCustomerReferenceIDWithoutOutputParams', {'customerReferenceID': customer_reference_id})
+    recs = request('NPVRGetByCustomerReferenceID', {'customerReferenceID': customer_reference_id})
     for rec in recs:
         time_end = rec['TimeEnd']
         time_start = rec['TimeStart']
