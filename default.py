@@ -1,402 +1,231 @@
 # -*- coding: utf-8 -*-
 #Библиотеки, които използват python и Kodi в тази приставка
-import re
 import sys
 import os
 import urllib
 import urllib2
-import cookielib
-import xbmc, xbmcplugin,xbmcgui,xbmcaddon
+import urlparse
+import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import base64
 import uuid
-from time import localtime, strftime, gmtime
 import json
 import datetime
-import time
 import md5
 
+base_url = sys.argv[0]
+addon_handle = int(sys.argv[1])
+args = urlparse.parse_qs(sys.argv[2][1:])
+
+#xbmcplugin.setContent(addon_handle, 'movies')
+
+def build_url(query):
+    return base_url + '?' + urllib.urlencode(query)
+
 #Място за дефиниране на константи, които ще се използват няколкократно из отделните модули
-__addon_id__= 'plugin.video.mtelnow'
-__Addon = xbmcaddon.Addon(__addon_id__)
-__settings__ = xbmcaddon.Addon(id='plugin.video.mtelnow')
-login = base64.b64decode('aHR0cHM6Ly9hMXhwbG9yZXR2LmJnL2xvZ2luP3E9dXNlcmxvZ2lu')
-loginred = base64.b64decode('aHR0cHM6Ly9hMXhwbG9yZXR2LmJnL0xvZ2luLmFzcHg/cT11c2VybG9naW4=')
-dns = base64.b64decode('YTF4cGxvcmV0di5iZw==')
-baseurl = base64.b64decode('aHR0cHM6Ly9hMXhwbG9yZXR2LmJnL25vdw==')
-item = base64.b64decode('aHR0cHM6Ly9hMXhwbG9yZXR2LmJnL05vd09uVHYuYXNweC9HZXRJdGVtRGV0YWlscw==')
-m1 = base64.b64decode('YTF4cGxvcmV0di5iZw==')
-m2 = base64.b64decode('aHR0cHM6Ly9hMXhwbG9yZXR2LmJn')
-live = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFJlc291cmNlcy9tdGVsL2ljb25fbGl2ZXR2LnBuZw==')
-recs = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFJlc291cmNlcy9tdGVsL2hvbWVfdGlsZV9teXJlY29yZGluZ3MucG5n')
-recs_url = base64.b64decode('aHR0cHM6Ly90YWdvdHQudmlwLmhyL09UVFNlcnZpY2Uuc3ZjL3Jlc3RzZXJ2aWNlL05QVlJHZXRCeUN1c3RvbWVyUmVmZXJlbmNlSURXaXRob3V0T3V0cHV0UGFyYW1z')
-UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'
-#UA = 'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko'
+#UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'
+UA = 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0'
 username = xbmcaddon.Addon().getSetting('settings_username')
 password = xbmcaddon.Addon().getSetting('settings_password')
-customerReferenceId = xbmcaddon.Addon().getSetting('customerReferenceId')
-if not username or not password or not __settings__:
+deviceSerial = str(uuid.uuid5(uuid.NAMESPACE_DNS, xbmc.getInfoLabel('Network.MacAddress')))
+
+if not username or not password or not xbmcaddon.Addon():
         xbmcaddon.Addon().openSettings()
 #Инициализация
-customer_time1 = 'GMT+0'+str(time.timezone / -(60*60))+'00'
-customer_time2 = strftime("%a %b %d %Y %H:%M:%S", localtime())
-customer_time3 = customer_time2 + ' ' + customer_time1
-customer_time4 = (time.timezone / -(60*60))*60
-req = urllib2.Request(login)
-req.add_header('User-Agent', UA)
-cj = cookielib.CookieJar()
-opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-f = opener.open(req)
-data = f.read()
-match1 = re.compile('id="__VIEWSTATE" value="(.+?)"').findall(data)
-match2 = re.compile('id="__VIEWSTATEGENERATOR" value="(.+?)"').findall(data)
-for viewstate in match1:
- for vgenerator in match2:
-    params = {'__EVENTTARGET':'ctl00$cph$lbLogin',
-            '__EVENTARGUMENT=': '',
-            '__VIEWSTATE': viewstate,
-            '__VIEWSTATEGENERATOR': vgenerator,
-            'ctl00$hfPluginSerial': str(uuid.uuid5(uuid.NAMESPACE_DNS, dns)),
-            'ctl00$hfPluginClientId': '',
-            'ctl00$hfPluginVersion': '',
-            'ctl00$hfDeviceSerial': str(uuid.uuid5(uuid.NAMESPACE_DNS, dns)),
-            'ctl00$hfCustomerTime': strftime("%a %b %d %Y %H:%M:%S GMT+0300", localtime()),
-            'ctl00$hfCurrentChannelRefId': '',
-            'ctl00$hfCurrentChannelPlayScript': '',
-            'ctl00$hfAjaxError': '',
-            'ctl00$cph$txtUsername': username,
-            'ctl00$cph$txtPassword': password,
-            'ctl00$cph$hfTimezoneOffset':'180'
-             }
-    req = urllib2.Request(loginred, urllib.urlencode(params))
-    req.add_header('User-Agent', UA)
-    opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-    f = opener.open(req)
-    data = f.read()
-    match = re.compile('<input type="hidden" id="customerReferenceId" value="(.+?)" />').findall(data)
-    for cRId in match:
-       xbmcaddon.Addon().setSetting('customerReferenceId', cRId)
-    
 
 #Меню с директории в приставката
 def CATEGORIES():
-        #addDir('НЕ ПРОПУСКАЙТЕ', 'https://'+dns+'/home',5, live)
-        addDir('Телевизия', baseurl, 1, live)
-        addDir('Моите Записи', recs_url, 3, recs)
-        
+    #addDir('НЕ ПРОПУСКАЙТЕ', 'https://'+dns+'/home',5, live)
+    addDir('index', 'Телевизия', "https://tagott.vip.hr/OTTResources/mtel/icon_livetv.png")
+    addDir('index_program', 'Програма', "https://tagott.vip.hr/OTTResources/mtel/icon_tvschedule.png")
+    addDir('index_zapisi', 'Записи', "https://tagott.vip.hr/OTTResources/mtel/home_tile_myrecordings.png")
+
+def _byteify(data, ignore_dicts = False):
+    # if this is a unicode string, return its string representation
+    if isinstance(data, unicode):
+        val = data.encode('utf-8')
+        if val[0:6] == '/Date(' and val[-2:] == ')/':
+            val = datetime.datetime.utcfromtimestamp(int(val[6:19]) / 1e3 + 60*60*2)
+        return val
+    # if this is a list of values, return list of byteified values
+    if isinstance(data, list):
+        return [ _byteify(item, ignore_dicts=True) for item in data ]
+    # if this is a dictionary, return dictionary of byteified keys and values
+    # but only if we haven't already byteified it
+    if isinstance(data, dict) and not ignore_dicts:
+        return {
+            _byteify(key, ignore_dicts=True): _byteify(value, ignore_dicts=True)
+            for key, value in data.iteritems()
+        }
+    # if it's anything else, return it in its original form
+    return data
+
+#изпращане на requst към endpoint
+def request(action, params={}):
+    global customer_reference_id
+    endpoint = 'https://tagott.vip.hr/OTTService.svc/restservice/'
+    data = {'deviceType': "118",
+            'deviceSerial': deviceSerial,
+            'operatorReferenceID': "A1_bulgaria",
+            'username': username,
+            'password':"{md5}" + md5.new(password).hexdigest()}
+    data.update(params)
+    req = urllib2.Request(endpoint + action, json.dumps(data))
+    req.add_header('User-Agent', UA)
+    req.add_header('Content-Type', 'application/json; charset=UTF-8')
+    f = urllib2.urlopen(req)
+    responce = f.read()
+    json_responce = json.loads(responce, object_hook=_byteify)
+    #xbmc.log(json.dumps(),xbmc.LOGNOTICE)
+    return json_responce[action + 'Result']
+
+# Аутентикация
+login = request('CustomerLoginGlobal', {'DRMID': deviceSerial, 'operatorExternalID': "A1_bulgaria"})
+server_time = login['ServerTime']
+customer_reference_id = login['myCustomer']['AdditionalIdentifiers'][0]['CustomerReferenceId']
+
+#Списък с каналите за изграждане на програма
+def INDEXPROGRAM():
+    channels = request('ChannelGetByDeviceInstanceExtended', {'customerReferenceID': customer_reference_id})
+    for channel in channels:
+        funart = channel['Icon']
+        if 'CurrentProgrammeImagePath' in channel:
+            funart = channel['CurrentProgrammeImagePath']
+        addDir('program', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'ChannelReferenceID': channel['ReferenceID']}, funart)
+
+def PROGRAM(args):
+    global server_time
+    channel_ref_id = args.get('ChannelReferenceID')[0]
+    days = int(args.get('days',[1])[0])
+    #if days > 1:
+    #    addDir('program', ' >> ' + (server_time - datetime.timedelta(days=days-1)).strftime('%Y-%m-%d'), '', {'ChannelReferenceID':channel_ref_id, 'days': days - 1})
+    date = server_time - datetime.timedelta(days=days, hours=1)
+    epg = request('EPGGetByChannelReferenceIDForDate', 
+                    {'customerReferenceID': customer_reference_id, 
+                     'channelReferenceID': channel_ref_id, 
+                     'date': date.strftime('%Y-%m-%dT%H:%M')})
+    for rec in reversed(epg):
+        time_end = rec['TimeEnd']
+        time_start = rec['TimeStart']
+        desc = 'Час: ' + time_start.strftime('%d.%m.%Y %H:%M') + ' - ' + time_end.strftime('%H:%M')
+        title = time_start.strftime('%H:%M') + ' ' + time_end.strftime('%H:%M') + ' ' + rec['Title']
+        addLink('playepg', title, rec['ImagePath'],
+                {'EPGReferenceID': rec['ReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
+                desc, rec['ImagePath'])
+    addDir('program', ' << ' + date.strftime('%Y-%m-%d'), '', {'ChannelReferenceID':channel_ref_id, 'days': days + 1})
+
 
 #Разлистване видеата на първата подадена страница
-def INDEXPAGES(url):
-        req = urllib2.Request(url)
-        req.add_header('User-Agent', UA)
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-        f = opener.open(req)
-        data = f.read()
-        #match = re.compile('<img src="(.+?)" />\r\n.*<div class="title"><span>(.+?)</span></div>\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*\r\n.*refid="(.+?)"\r\n.*\r\n.*\r\n.*\r\n.*(https.+?jpg).*\r\n.*\r\n.*<span>(.+?)</span>').findall(data)
-        match = re.compile(' data-chrefid="(.+?)">\r\n.*\r\n.*\r\n.*<img id=".*" src="(.+?)" />\r\n.*<div class="title">\r\n.*<span id=".*">(.+?)</span>\r\n.*\r\n.*<div class="num">\r\n\s*(.+?)\r\n.*</div>\r\n.*\r\n.*\r\n.*\r\n.*<img id=".*" class="thumb".*src="(.+?)" />\r\n.*\r\n.*\r\n.*<span id=".*">(.+?)</span>').findall(data)
-        for chrefid,thumbnail,title,chnum,fanart,vmomenta in match:
-          desc = 'В момента: ' + vmomenta
-          fanart = urllib.unquote(fanart)
-          url = item
-          addLink(title+' - '+vmomenta, url+'@'+chrefid, 2, desc, thumbnail, fanart)
-
+def INDEXPAGES():
+    channels = request('ChannelGetByDeviceInstanceExtended', {'customerReferenceID': customer_reference_id})
+    for channel in channels:
+        time_end = channel['CurrentProgrammeStopTime']
+        time_start = channel['CurrentProgrammeStartTime']
+        funart = channel['Icon']
+        if 'CurrentProgrammeImagePath' in channel:
+            funart = channel['CurrentProgrammeImagePath']
+        addLink('play', 
+                  channel['Name'] + ' - ' + time_start.strftime('%H:%M') + ' ' + time_end.strftime('%H:%M') + ' - ' + channel['CurrentProgramme'],
+                  channel['Icon'],
+                  {'path': channel['StreamingURL']},
+                  channel['CurrentProgramme'],
+                  funart)
 
 #Зареждане на видео
-def PLAY(url):
-         match0 = re.compile('(.+?)@(.*)').findall(url)
-         for url1, chnum in match0:
-          pd = '{"referenceId":' + '"' + chnum + '"' + ',"type":"live","source":"nowontv, startchannellivestream"}'
-          postdata = {"clientAssetData":pd}
-          data = json.dumps(postdata)
-          req = urllib2.Request(url1, data)
-          req.add_header('Host', m1)
-          req.add_header('Connection', 'keep-alive')
-          req.add_header('Origin', m2)
-          req.add_header('X-Requested-With', 'XMLHttpRequest')
-          req.add_header('User-Agent', UA)
-          req.add_header('Content-Type', 'application/json; charset=UTF-8')
-          req.add_header('Accept', '*/*')
-          req.add_header('Referer', baseurl)
-          req.add_header('Accept-Encoding', 'gzip, deflate, br')
-          req.add_header('Accept-Language', 'bg-BG,bg;q=0.9')
-          opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-          f = opener.open(req)
-          data = f.read()
-          dt_custom_data = base64.b64encode(data)
-          dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
-          match = re.compile('streamURL.":.+?(https.+?mpd)').findall(data)
-          for ism in match:
-           ism = ism.replace('\/','/')
-           payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
-           response = xbmc.executeJSONRPC(json.dumps(payload))
-           data2 = json.loads(response)
-           version = data2['result']['addon']['version'].replace(".","")
-           if version < 2211:
-            xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
-           if version < 2215:
-            print 'All okay!'
-           if version > 2215:
-            ism = ism.replace('https','http')            
-           li = xbmcgui.ListItem(path=ism)
-           li.setProperty('inputstreamaddon', 'inputstream.adaptive')
-           li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
-           li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
-           li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
-           li.setMimeType('application/dash+xml')
-           try:
-              xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
-           except:
-              xbmc.executebuiltin("Notification('Грешка','Видеото липсва на сървъра!')")
+def PLAY(args):
+    path = args.get('path')[0]
+    PLAYPATH(path)
 
-def INDEXZAPISI(url):
-        pd = '{"customerReferenceID":"'+customerReferenceId+'","deviceType":"118","deviceSerial":"'+str(uuid.uuid5(uuid.NAMESPACE_DNS, dns))+'","operatorReferenceID":"A1_bulgaria","username":"'+username+'","password":"{md5}'+md5.new(password).hexdigest()+'"}'
-        req = urllib2.Request(url, pd)
-        req.add_header('User-Agent', UA)
-        req.add_header('Content-Type', 'application/json; charset=UTF-8')
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-        f = opener.open(req)
-        data = f.read()
-        json_data = json.loads(data)
-        #xbmc.log(json.dumps(),xbmc.LOGNOTICE)
-        for rec_item in json_data['NPVRGetByCustomerReferenceIDWithoutOutputParamsResult']:
-          #xbmc.log(json.dumps(type(rec_item['TimeStart'])),xbmc.LOGNOTICE)
-          starttimestamp = int(rec_item['TimeStart'].encode('utf8')[6:19])
-          endtimestamp = int(rec_item['TimeEnd'].encode('utf8')[6:19])
-          starttime = datetime.datetime.utcfromtimestamp(starttimestamp / 1e3 + 60*60*2)
-          endtime = datetime.datetime.utcfromtimestamp(endtimestamp / 1e3 + 60*60*2)
-          desc = 'Час: ' + starttime.strftime('%d.%m.%Y %H:%M') + ' ' + endtime.strftime('%d.%m.%Y %H:%M')
-          thumbnail = urllib.unquote_plus(rec_item['ImagePath'])
-          fanart = thumbnail
-          url = item
-          title = starttime.strftime('%d.%m %H:%M') + ' ' + rec_item['ChannelName'].encode('utf8') + ' ' + rec_item['Title'].encode('utf8')
-          addLink(title, url+'@'+rec_item['ChannelReferenceID'].encode('utf8')+'@'+str(starttimestamp)+'@'+str(endtimestamp)+'@', 4, desc, thumbnail, fanart)
+def PLAYPATH(path, title = "", plot=""):
+    payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
+    response = xbmc.executeJSONRPC(json.dumps(payload))
+    data = json.loads(response)
+    version = data['result']['addon']['version'].replace(".", "")
+    if version < 2211:
+        xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
+    li = xbmcgui.ListItem(path=path)
+    li.setProperty('inputstreamaddon', 'inputstream.adaptive')
+    li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
+    li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
+    dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
+    li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
+    li.setMimeType('application/dash+xml')
+    if title and plot:
+        li.setInfo( type="Video", infoLabels={ "Title": title, "plot": plot})
+    try:
+        xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
+    except:
+        xbmc.executebuiltin("Notification('Грешка','Видеото липсва на сървъра!')")
 
-def PLAYNPVR(url):
-         match0 = re.compile('(.+?)@(.+?)@(.+?)@(.+?)@').findall(url)
-         for url1, chnum, nachalo, krai in match0:
-          pd = '{"referenceId":' + '"' + chnum + '"' + ',"type":"live","source":"nowontv, startchannellivestream"}'
-          postdata = {"clientAssetData":pd}
-          data = json.dumps(postdata)
-          req = urllib2.Request(url1, data)
-          req.add_header('Host', m1)
-          req.add_header('Connection', 'keep-alive')
-          req.add_header('Origin', m2)
-          req.add_header('X-Requested-With', 'XMLHttpRequest')
-          req.add_header('User-Agent', UA)
-          req.add_header('Content-Type', 'application/json; charset=UTF-8')
-          req.add_header('Accept', '*/*')
-          req.add_header('Referer', baseurl)
-          req.add_header('Accept-Encoding', 'gzip, deflate, br')
-          req.add_header('Accept-Language', 'bg-BG,bg;q=0.9')
-          opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-          f = opener.open(req)
-          data = f.read()
-          dt_custom_data = base64.b64encode(data)
-          dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
-          match = re.compile('streamURL.":.+?(https.+?mpd)').findall(data)
-          for ism in match:
-           ism = ism.replace('\/','/')
-           ism = ism.replace('Live','Catchup')
-           ism = ism.replace('Channel(','Channel(name=')
-           ism = ism.replace(')/manifest.mpd','')
-           start = nachalo + str('0000')
-           stop = krai + str('0000')
-           mpdurl = ism + ',startTime=' + str(start) + ',endTime=' + str(stop) + ')/manifest.mpd'
-           li = xbmcgui.ListItem(path=mpdurl)
-           payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
-           response = xbmc.executeJSONRPC(json.dumps(payload))
-           data2 = json.loads(response)
-           version = data2['result']['addon']['version'].replace(".","")
-           if version < 2211:
-            xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
-           if version < 2215:
-            print 'All okay!'
-           if version > 2215:
-            mpdurl = mpdurl.replace('https','http')        
-           li.setProperty('inputstreamaddon', 'inputstream.adaptive')
-           li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
-           li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
-           li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
-           li.setMimeType('application/dash+xml')
-           try:
-              xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
-           except:
-              xbmc.executebuiltin("Notification('Грешка','Видеото липсва на сървъра!')")
+def PLAYEPG(args):
+    epg_ref_id = args.get('EPGReferenceID')[0]
+    channel_ref_id = args.get('ChannelReferenceID')[0]
+    
+    epg_details = request('EPGGetDetails', 
+                            {'customerReferenceID': customer_reference_id,
+                             'channelReferenceID': channel_ref_id,
+                             'epgReferenceID': epg_ref_id})
+    path = epg_details['FileName']
+    if path.find('/Live/') > 0:
+        path = epg_details['FileNameStartOver']
+    PLAYPATH(path, title=epg_details['Title'], plot=epg_details["DescriptionLong"])
 
-def PREPORACHANO(url):
-        req = urllib2.Request(url)
-        req.add_header('User-Agent', UA)
-        opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-        f = opener.open(req)
-        data = f.read()
-        match = re.compile('<div id="cph_tileNext_rptItems_pnlItemTile_\d+".+?timestart="(.+?)".+?end=".+?".+?channelrefid="(.+?)".+?url=(.+?jpg).*\n.*\n.*\n.*\n.*\n.*\s+(.*)\s+.*\n.*\n.*\s+(.*)').findall(data)
-        for stop,chnum,thumbnail,date,title in match:
-          desc = 'Дата: '+date
-          thumbnail = urllib.unquote_plus(thumbnail)
-          fanart = thumbnail
-          url = item
-          print date
-          match1 = re.compile('.* (\d+.\d+.\d+).*(\d\d+:\d+) - (\d+:\d+)').findall(date)
-          for dates,nachalo,krai in match1:
-           nachaloto = str(dates)+' '+nachalo
-           startat = datetime.datetime.strptime(str(nachaloto), '%d.%m.%Y %H:%M')
-           start = time.mktime(startat.timetuple())
-           start = str(start).replace('.','')+str('000000')
-           kraqt = str(dates)+' '+krai
-           theend = datetime.datetime.strptime(str(kraqt), '%d.%m.%Y %H:%M')
-           stop = time.mktime(startat.timetuple())
-           stop = str(start).replace('.','')+str('000000')
-           addLink(title,url+'@'+chnum+'@'+start+'@'+stop,6,desc,thumbnail,fanart)
-
-def PLAYPREPORACHANO(url):
-         match0 = re.compile('(.+?)@(.+?)@(.+?)@(.*)').findall(url)
-         for url1,chnum,nachalo,krai in match0:
-          pd = '{"referenceId":' + '"' + chnum + '"' + ',"type":"live","source":"nowontv, startchannellivestream"}'
-          postdata = {"clientAssetData":pd}
-          data = json.dumps(postdata)
-          req = urllib2.Request(url1, data)
-          req.add_header('Host', m1)
-          req.add_header('Connection', 'keep-alive')
-          req.add_header('Origin', m2)
-          req.add_header('X-Requested-With', 'XMLHttpRequest')
-          req.add_header('User-Agent', UA)
-          req.add_header('Content-Type', 'application/json; charset=UTF-8')
-          req.add_header('Accept', '*/*')
-          req.add_header('Referer', baseurl)
-          req.add_header('Accept-Encoding', 'gzip, deflate, br')
-          req.add_header('Accept-Language', 'bg-BG,bg;q=0.9')
-          opener = urllib2.build_opener(urllib2.HTTPCookieProcessor(cj))
-          f = opener.open(req)
-          data = f.read()
-          dt_custom_data = base64.b64encode(data)
-          dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
-          match = re.compile('streamURL.":.+?(https.+?mpd)').findall(data)
-          for ism in match:
-           ism = ism.replace('\/','/')
-           ism = ism.replace('Live','Catchup')
-           ism = ism.replace('Channel(','Channel(name=')
-           ism = ism.replace(')/manifest.mpd','')
-           now = datetime.datetime.now()
-           mpdurl = ism + ',startTime=' + str(nachalo) + ',endTime=' + str(krai) + ')/manifest.mpd'
-           li = xbmcgui.ListItem(path=mpdurl)
-           payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
-           response = xbmc.executeJSONRPC(json.dumps(payload))
-           data2 = json.loads(response)
-           version = data2['result']['addon']['version'].replace(".","")
-           if version < 2211:
-            xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
-           if version < 2215:
-            print 'All okay!'
-           if version > 2215:
-            mpdurl = mpdurl.replace('https','http') 
-           li.setProperty('inputstreamaddon', 'inputstream.adaptive')
-           li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
-           li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
-           li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
-           li.setMimeType('application/dash+xml')
-           try:
-              xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
-           except:
-              xbmc.executebuiltin("Notification('Грешка','Видеото липсва на сървъра!')")
-
+def INDEXZAPISI():
+    recs = request('NPVRGetByCustomerReferenceID', {'customerReferenceID': customer_reference_id})
+    for rec in recs:
+        time_end = rec['TimeEnd']
+        time_start = rec['TimeStart']
+        desc = 'Час: ' + time_start.strftime('%d.%m.%Y %H:%M') + ' - ' + time_end.strftime('%H:%M')
+        title = time_start.strftime('%d.%m %H:%M') + ' ' + rec['ChannelName'] + ' ' + rec['Title']
+        addLink('playepg', title, rec['ImagePath'],
+                {'EPGReferenceID': rec['EPGReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
+                desc, rec['ImagePath'])
+        
 #Модул за добавяне на отделно заглавие и неговите атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def addLink(name,url,mode,plot,iconimage,fanart):
-        u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
-        ok=True
-        liz=xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
-        liz.setArt({ 'thumb': iconimage,'poster': fanart, 'banner' : fanart, 'fanart': fanart })
-        liz.setInfo( type="Video", infoLabels={ "Title": name, "plot": plot } )
-        liz.setProperty("IsPlayable" , "true")
-        ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=False)
-        return ok
-
+def addLink(mode, name, iconimage, params={}, plot="", fanart=""):
+    query = {'mode': mode}
+    if params:
+        query.update(params)
+    url = build_url(query)
+    li = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
+    li.setArt({ 'thumb': iconimage,'poster': fanart, 'banner' : fanart, 'fanart': fanart })
+    li.setInfo( type="Video", infoLabels={ "Title": name, "plot": plot })
+    li.setProperty("IsPlayable" , "true")
+    return xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=li, isFolder=False)
 
 #Модул за добавяне на отделна директория и нейните атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def addDir(name,url,mode,iconimage):
-        u=sys.argv[0]+"?url="+urllib.quote_plus(url)+"&mode="+str(mode)+"&name="+urllib.quote_plus(name)
-        ok=True
-        liz=xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
-        liz.setArt({ 'thumb': iconimage,'poster': iconimage, 'banner' : iconimage, 'fanart': iconimage })
-        liz.setInfo( type="Video", infoLabels={ "Title": name } )
-        ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=u,listitem=liz,isFolder=True)
-        return ok
+def addDir(mode, name, iconimage, params={}, funart=""):
+    query = {'mode': mode}
+    if params:
+        query.update(params)
+    url = build_url(query)
+    if not funart:
+        funart = iconimage
+    li = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
+    li.setArt({ 'thumb': iconimage,'poster': funart, 'banner': funart, 'fanart': funart })
+    li.setInfo( type="Video", infoLabels={ "Title": name })
+    return xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
 
 
 #НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def get_params():
-        param=[]
-        paramstring=sys.argv[2]
-        if len(paramstring)>=2:
-                params=sys.argv[2]
-                cleanedparams=params.replace('?','')
-                if (params[len(params)-1]=='/'):
-                        params=params[0:len(params)-2]
-                pairsofparams=cleanedparams.split('&')
-                param={}
-                for i in range(len(pairsofparams)):
-                        splitparams={}
-                        splitparams=pairsofparams[i].split('=')
-                        if (len(splitparams))==2:
-                                param[splitparams[0]]=splitparams[1]
-                                
-        return param
+def build_url(query):
+    return base_url + '?' + urllib.urlencode(query)
 
-
-
-
-
-
-
-params=get_params()
-url=None
-name=None
-iconimage=None
-mode=None
-
-try:
-        url=urllib.unquote_plus(params["url"])
-except:
-        pass
-try:
-        name=urllib.unquote_plus(params["name"])
-except:
-        pass
-try:
-        name=urllib.unquote_plus(params["iconimage"])
-except:
-        pass
-try:
-        mode=int(params["mode"])
-except:
-        pass
-
+mode = args.get('mode', None)
 
 #Списък на отделните подпрограми/модули в тази приставка - трябва напълно да отговаря на кода отгоре
-if mode==None or url==None or len(url)<1:
-        print ""
+if mode == None:
         CATEGORIES()
-    
-elif mode==1:
-        print ""+url
-        INDEXPAGES(url)
-
-elif mode==2:
-        print ""+url
-        PLAY(url)
-
-elif mode==3:
-        print ""+url
-        INDEXZAPISI(url)
-
-elif mode==4:
-        print ""+url
-        PLAYNPVR(url)
-
-elif mode==5:
-        print ""+url
-        PREPORACHANO(url)
-
-elif mode==6:
-        print ""+url
-        PLAYPREPORACHANO(url)        
+elif mode[0] == 'index':
+        INDEXPAGES()
+elif mode[0] == 'play':
+        PLAY(args)
+elif mode[0] == 'index_zapisi':
+        INDEXZAPISI()
+elif mode[0] == 'playepg':
+        PLAYEPG(args)
+elif mode[0] == 'program':
+        PROGRAM(args)
+elif mode[0] == 'index_program':
+        INDEXPROGRAM()
         
-xbmcplugin.endOfDirectory(int(sys.argv[1]))
+xbmcplugin.endOfDirectory(addon_handle)
