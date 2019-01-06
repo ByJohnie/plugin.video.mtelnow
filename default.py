@@ -8,10 +8,6 @@ import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import base64
 from common import *
 
-print('=============================================')
-print(sys.argv)
-print('=============================================')
-
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
 args = urlparse.parse_qs(sys.argv[2][1:])
