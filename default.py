@@ -33,12 +33,12 @@ if not username or not password or not xbmcaddon.Addon():
 #Инициализация
 
 #Меню с директории в приставката
-def CATEGORIES():
+def MainMenu():
     #addDir('НЕ ПРОПУСКАЙТЕ', 'https://'+dns+'/home',5, live)
-    addDir('index', 'Телевизия', "https://tagott.vip.hr/OTTResources/mtel/icon_livetv.png")
-    addDir('index_program', 'Програма', "https://tagott.vip.hr/OTTResources/mtel/icon_tvschedule.png")
-    #addDir('index_vod', 'Видеотека', "https://tagott.vip.hr/OTTResources/mtel/icon_videostore.png")
-    addDir('index_zapisi', 'Записи', "https://tagott.vip.hr/OTTResources/mtel/home_tile_myrecordings.png")
+    addDir('index_channels', 'Телевизия', "https://tagott.vip.hr/OTTResources/mtel/icon_livetv.png")
+    addDir('index_channels_program', 'Програма', "https://tagott.vip.hr/OTTResources/mtel/icon_tvschedule.png")
+    addDir('index_vod', 'Видеотека', "https://tagott.vip.hr/OTTResources/mtel/icon_videostore.png")
+    addDir('index_npvr', 'Записи', "https://tagott.vip.hr/OTTResources/mtel/home_tile_myrecordings.png")
 
 def _byteify(data, ignore_dicts = False):
     # if this is a unicode string, return its string representation
@@ -68,7 +68,7 @@ def request(action, params={}):
             'deviceSerial': deviceSerial,
             'operatorReferenceID': "A1_bulgaria",
             'username': username,
-            'password': password}#"{md5}" + md5.new(password).hexdigest()}
+            'password': "{md5}" + md5.new(password).hexdigest()}
     data.update(params)
     req = urllib2.Request(endpoint + action, json.dumps(data))
     req.add_header('User-Agent', UA)
@@ -86,15 +86,15 @@ customer_reference_id = login['myCustomer']['AdditionalIdentifiers'][0]['Custome
 language_reference_id = login['myCustomer']['LanguageExternalID']
 
 #Списък с каналите за изграждане на програма
-def INDEXPROGRAM():
+def indexChannelsProgram():
     channels = request('ChannelGetByDeviceInstanceExtended', {'customerReferenceID': customer_reference_id})
     for channel in channels:
         funart = channel['Icon']
         if 'CurrentProgrammeImagePath' in channel:
             funart = channel['CurrentProgrammeImagePath']
-        addDir('program', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'ChannelReferenceID': channel['ReferenceID']}, funart)
+        addDir('index_program', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'ChannelReferenceID': channel['ReferenceID']}, funart)
 
-def PROGRAM(args):
+def indexProgram(args):
     global server_time
     channel_ref_id = args.get('ChannelReferenceID')[0]
     days = int(args.get('days',[1])[0])
@@ -108,14 +108,14 @@ def PROGRAM(args):
         time_start = rec['TimeStart']
         desc = 'Час: ' + time_start.strftime('%d.%m.%Y %H:%M') + ' - ' + time_end.strftime('%H:%M')
         title = time_start.strftime('%H:%M') + ' ' + time_end.strftime('%H:%M') + ' ' + rec['Title']
-        addLink('playepg', title, rec['ImagePath'],
+        addLink('play_epg', title, rec['ImagePath'],
                 {'EPGReferenceID': rec['ReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
-                desc, rec['ImagePath'])
-    addDir('program', ' << ' + date.strftime('%Y-%m-%d'), '', {'ChannelReferenceID':channel_ref_id, 'days': days + 1})
+                rec['ImagePath'], desc)
+    addDir('index_program', ' << ' + date.strftime('%Y-%m-%d'), '', {'ChannelReferenceID':channel_ref_id, 'days': days + 1})
 
 
 #Разлистване видеата на първата подадена страница
-def INDEXPAGES():
+def indexChannels():
     channels = request('ChannelGetByDeviceInstanceExtended', {'customerReferenceID': customer_reference_id})
     for channel in channels:
         time_end = channel['CurrentProgrammeStopTime']
@@ -131,11 +131,11 @@ def INDEXPAGES():
                   funart)
 
 #Зареждане на видео
-def PLAY(args):
+def Play(args):
     path = args.get('path')[0]
-    PLAYPATH(path)
+    playPath(path)
 
-def PLAYPATH(path, title = "", plot=""):
+def playPath(path, title = "", plot=""):
     payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
     response = xbmc.executeJSONRPC(json.dumps(payload))
     data = json.loads(response)
@@ -156,7 +156,7 @@ def PLAYPATH(path, title = "", plot=""):
     except:
         xbmc.executebuiltin("Notification('Грешка','Видеото липсва на сървъра!')")
 
-def PLAYEPG(args):
+def playEPG(args):
     epg_ref_id = args.get('EPGReferenceID')[0]
     channel_ref_id = args.get('ChannelReferenceID')[0]
     
@@ -167,26 +167,37 @@ def PLAYEPG(args):
     path = epg_details['FileName']
     if path.find('/Live/') > 0:
         path = epg_details['FileNameStartOver']
-    PLAYPATH(path, title=epg_details['Title'], plot=epg_details["DescriptionLong"])
+    playPath(path, title=epg_details['Title'], plot=epg_details["DescriptionLong"])
 
-def INDEXZAPISI():
+def playVOD(args):
+    asset_ref_id = args.get('ReferenceID')[0]
+
+    asset_details = request('AssetGetAssetDetails',
+                            {'customerReferenceID': customer_reference_id,
+                             'languageReferenceID': language_reference_id,
+                             'deviceReferenceID': "118",
+                             'assetReferenceID': asset_ref_id})
+    path = asset_details['FileName']
+    playPath(path)
+
+def indexNPVR():
     recs = request('NPVRGetByCustomerReferenceID', {'customerReferenceID': customer_reference_id})
     for rec in recs:
         time_end = rec['TimeEnd']
         time_start = rec['TimeStart']
         desc = 'Час: ' + time_start.strftime('%d.%m.%Y %H:%M') + ' - ' + time_end.strftime('%H:%M')
         title = time_start.strftime('%d.%m %H:%M') + ' ' + rec['ChannelName'] + ' ' + rec['Title']
-        addLink('playepg', title, rec['ImagePath'],
+        addLink('play_epg', title, rec['ImagePath'],
                 {'EPGReferenceID': rec['EPGReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
-                desc, rec['ImagePath'])
+                rec['ImagePath'], desc)
         
-def INDEXVOD():
+def indexVOD():
     items = request('VideostoreItemGetChildrenCatalogue', 
                      {'languageReferenceID': language_reference_id})
     for item in items:
         addDir('index_vod_cat', item['Name'], item['Icon'], {'ReferenceID': item['ReferenceID']})
 
-def INDEXVODCAT(args):
+def indexVODCat(args):
     ref_id = args.get('ReferenceID')[0]
     items = request('VideostoreItemGetChildrenCatalogue', 
                      {'languageReferenceID': language_reference_id, 
@@ -198,7 +209,7 @@ def INDEXVODCAT(args):
                 funart = item['PosterPortrait']
             addDir('index_vod_series', item['Name'], item['PosterPortrait'], {'ReferenceID': item['ReferenceID']}, funart, item['DescriptionShort'])
 
-def INDEXVODSERIES(args):
+def indexVODSeries(args):
     ref_id = args.get('ReferenceID')[0]
     s_ref_id = args.get('seasonReferenceID',[''])[0]
     items = request('SeriesGetContent', 
@@ -206,7 +217,6 @@ def INDEXVODSERIES(args):
                       'seriesReferenceID': ref_id,
                       'seasonReferenceID': s_ref_id})
     for item in items:
-        print(item)
         funart = item['PosterLandscape']
         if not funart:
             funart = item['PosterPortrait']
@@ -216,10 +226,14 @@ def INDEXVODSERIES(args):
             plot = ''
             if 'DescriptionShort' in item:
                 plot = item['DescriptionShort']
-            addDir('index_vod_series', 'S' + str(item['SeasonNr']) + ' E' + str(item['EpisodeNr']) + ' ' + item['Name'], funart, {'seasonReferenceID': item['ReferenceID'], 'ReferenceID': ref_id}, funart, plot)
+            addLink('play_vod',
+                     'S' + str(item['SeasonNr']) + ' E' + str(item['EpisodeNr']) + ' ' + item['Name'], 
+                     funart, 
+                     {'ReferenceID': item['ReferenceID']}, 
+                     funart, plot)
 
 #Модул за добавяне на отделно заглавие и неговите атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def addLink(mode, name, iconimage, params={}, plot="", fanart=""):
+def addLink(mode, name, iconimage, params={}, fanart="", plot=""):
     query = {'mode': mode}
     if params:
         query.update(params)
@@ -248,24 +262,26 @@ mode = args.get('mode', None)
 
 #Списък на отделните подпрограми/модули в тази приставка - трябва напълно да отговаря на кода отгоре
 if mode == None:
-        CATEGORIES()
-elif mode[0] == 'index':
-        INDEXPAGES()
+        MainMenu()
+elif mode[0] == 'index_channels':
+        indexChannels()
 elif mode[0] == 'play':
-        PLAY(args)
-elif mode[0] == 'index_zapisi':
-        INDEXZAPISI()
+        Play(args)
+elif mode[0] == 'index_npvr':
+        indexNPVR()
 elif mode[0] == 'index_vod':
-        INDEXVOD()
+        indexVOD()
 elif mode[0] == 'index_vod_cat':
-        INDEXVODCAT(args)
+        indexVODCat(args)
 elif mode[0] == 'index_vod_series':
-        INDEXVODSERIES(args)
-elif mode[0] == 'playepg':
-        PLAYEPG(args)
-elif mode[0] == 'program':
-        PROGRAM(args)
+        indexVODSeries(args)
+elif mode[0] == 'play_vod':
+        playVOD(args)
+elif mode[0] == 'play_epg':
+        playEPG(args)
+elif mode[0] == 'index_channels_program':
+        indexChannelsProgram()
 elif mode[0] == 'index_program':
-        INDEXPROGRAM()
+        indexProgram(args)
         
 xbmcplugin.endOfDirectory(addon_handle)
