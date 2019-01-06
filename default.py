@@ -3,30 +3,24 @@
 import sys
 import os
 import urllib
-import urllib2
 import urlparse
 import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import base64
-import uuid
-import json
-import datetime
-import md5
+from common import *
+
+print('=============================================')
+print(sys.argv)
+print('=============================================')
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
 args = urlparse.parse_qs(sys.argv[2][1:])
+this_plugin = xbmcaddon.Addon().getAddonInfo('path') + '/actions.py'
 
 #xbmcplugin.setContent(addon_handle, 'movies')
 
 def build_url(query):
     return base_url + '?' + urllib.urlencode(query)
-
-#Място за дефиниране на константи, които ще се използват няколкократно из отделните модули
-#UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'
-UA = 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0'
-username = xbmcaddon.Addon().getSetting('settings_username')
-password = xbmcaddon.Addon().getSetting('settings_password')
-deviceSerial = str(uuid.uuid5(uuid.NAMESPACE_DNS, xbmc.getInfoLabel('Network.MacAddress')))
 
 if not username or not password or not xbmcaddon.Addon():
         xbmcaddon.Addon().openSettings()
@@ -39,45 +33,6 @@ def MainMenu():
     addDir('index_channels_program', 'Програма', "https://tagott.vip.hr/OTTResources/mtel/icon_tvschedule.png")
     addDir('index_vod', 'Видеотека', "https://tagott.vip.hr/OTTResources/mtel/icon_videostore.png")
     addDir('index_npvr', 'Записи', "https://tagott.vip.hr/OTTResources/mtel/home_tile_myrecordings.png")
-
-def _byteify(data, ignore_dicts = False):
-    # if this is a unicode string, return its string representation
-    if isinstance(data, unicode):
-        val = data.encode('utf-8')
-        if val[0:6] == '/Date(' and val[-2:] == ')/':
-            val = datetime.datetime.utcfromtimestamp(int(val[6:19]) / 1e3 + 60*60*2)
-        return val
-    # if this is a list of values, return list of byteified values
-    if isinstance(data, list):
-        return [ _byteify(item, ignore_dicts=True) for item in data ]
-    # if this is a dictionary, return dictionary of byteified keys and values
-    # but only if we haven't already byteified it
-    if isinstance(data, dict) and not ignore_dicts:
-        return {
-            _byteify(key, ignore_dicts=True): _byteify(value, ignore_dicts=True)
-            for key, value in data.iteritems()
-        }
-    # if it's anything else, return it in its original form
-    return data
-
-#изпращане на requst към endpoint
-def request(action, params={}):
-    global customer_reference_id
-    endpoint = 'https://tagott.vip.hr/OTTService.svc/restservice/'
-    data = {'deviceType': "118",
-            'deviceSerial': deviceSerial,
-            'operatorReferenceID': "A1_bulgaria",
-            'username': username,
-            'password': "{md5}" + md5.new(password).hexdigest()}
-    data.update(params)
-    req = urllib2.Request(endpoint + action, json.dumps(data))
-    req.add_header('User-Agent', UA)
-    req.add_header('Content-Type', 'application/json; charset=UTF-8')
-    f = urllib2.urlopen(req)
-    responce = f.read()
-    json_responce = json.loads(responce, object_hook=_byteify)
-    #xbmc.log(json.dumps(),xbmc.LOGNOTICE)
-    return json_responce[action + 'Result']
 
 # Аутентикация
 login = request('CustomerLoginGlobal', {'DRMID': deviceSerial, 'operatorExternalID': "A1_bulgaria"})
@@ -110,7 +65,8 @@ def indexProgram(args):
         title = time_start.strftime('%H:%M') + ' ' + time_end.strftime('%H:%M') + ' ' + rec['Title']
         addLink('play_epg', title, rec['ImagePath'],
                 {'EPGReferenceID': rec['ReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
-                rec['ImagePath'], desc)
+                rec['ImagePath'], desc, 
+                context_items = {'Запиши': "insert_npvr," + customer_reference_id + "," + rec['ReferenceID']})
     addDir('index_program', ' << ' + date.strftime('%Y-%m-%d'), '', {'ChannelReferenceID':channel_ref_id, 'days': days + 1})
 
 
@@ -189,7 +145,8 @@ def indexNPVR():
         title = time_start.strftime('%d.%m %H:%M') + ' ' + rec['ChannelName'] + ' ' + rec['Title']
         addLink('play_epg', title, rec['ImagePath'],
                 {'EPGReferenceID': rec['EPGReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
-                rec['ImagePath'], desc)
+                rec['ImagePath'], desc, 
+                context_items = {'Изтрий': "delete_npvr," + customer_reference_id + "," + rec['EPGReferenceID']})
         
 def indexVOD():
     items = request('VideostoreItemGetChildrenCatalogue', 
@@ -233,7 +190,7 @@ def indexVODSeries(args):
                      funart, plot)
 
 #Модул за добавяне на отделно заглавие и неговите атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def addLink(mode, name, iconimage, params={}, fanart="", plot=""):
+def addLink(mode, name, iconimage, params={}, fanart="", plot="", context_items = {}):
     query = {'mode': mode}
     if params:
         query.update(params)
@@ -242,6 +199,11 @@ def addLink(mode, name, iconimage, params={}, fanart="", plot=""):
     li.setArt({ 'thumb': iconimage,'poster': fanart, 'banner' : fanart, 'fanart': fanart })
     li.setInfo( type="Video", infoLabels={"Title": name, "plot": plot})
     li.setProperty("IsPlayable" , "true")
+    if context_items:
+        pre_items = []
+        for item in context_items:
+            pre_items.append((item, "XBMC.RunScript(" + this_plugin + ", " + context_items[item] + ")"))
+        li.addContextMenuItems(pre_items)
     return xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=li, isFolder=False)
 
 #Модул за добавяне на отделна директория и нейните атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
