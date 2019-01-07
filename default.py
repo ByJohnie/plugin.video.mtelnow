@@ -145,10 +145,13 @@ def indexNPVR():
                 context_items = {'Изтрий': "delete_npvr," + customer_reference_id + "," + rec['EPGReferenceID']})
         
 def indexVOD():
-    items = request('VideostoreItemGetChildrenCatalogue', 
+    try:
+        items = request('VideostoreItemGetChildrenCatalogue', 
                      {'languageReferenceID': language_reference_id})
-    for item in items:
-        addDir('index_vod_cat', item['Name'], item['Icon'], {'ReferenceID': item['ReferenceID']})
+        for item in items:
+            addDir('index_vod_cat', item['Name'], item['Icon'], {'ReferenceID': item['ReferenceID']})
+    except TypeError:
+        xbmcgui.Dialog().ok('Не сте абониран','Не сте абониран за избрания пакет. Моля, свържете се с наш сътрудник на *88.')
 
 def indexVODCat(args):
     ref_id = args.get('ReferenceID')[0]
