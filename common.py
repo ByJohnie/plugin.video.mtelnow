@@ -4,7 +4,7 @@ import uuid
 import urllib2
 import datetime
 import json
-import md5
+#import md5
 
 
 #Място за дефиниране на константи, които ще се използват няколкократно из отделните модули
@@ -41,7 +41,7 @@ def request(action, params={}):
             'deviceSerial': deviceSerial,
             'operatorReferenceID': "A1_bulgaria",
             'username': username,
-            'password': "{md5}" + md5.new(password).hexdigest()}
+            'password': password}#"{md5}" + md5.new(password).hexdigest()}
     data.update(params)
     req = urllib2.Request(endpoint + action, json.dumps(data))
     req.add_header('User-Agent', UA)
