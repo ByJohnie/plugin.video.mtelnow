@@ -6,6 +6,7 @@ import urllib
 import urlparse
 import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import base64
+import inputstreamhelper
 from common import *
 
 base_url = sys.argv[0]
@@ -88,26 +89,31 @@ def Play(args):
     playPath(path)
 
 def playPath(path, title = "", plot=""):
-    payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
-    response = xbmc.executeJSONRPC(json.dumps(payload))
-    data = json.loads(response)
-    version = data['result']['addon']['version'].replace(".", "")
-    if version < 2211:
-        xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
-    li = xbmcgui.ListItem(path=path)
-    li.setProperty('inputstreamaddon', 'inputstream.adaptive')
-    li.setProperty('inputstream.adaptive.manifest_type', 'mpd')
-    li.setProperty('inputstream.adaptive.license_type', 'com.widevine.alpha')
-    dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
-    li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
-    li.setMimeType('application/dash+xml')
-    if title and plot:
-        li.setInfo( type="Video", infoLabels={ "Title": title, "plot": plot})
-    try:
-        xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
-    except:
-        xbmc.executebuiltin("Notification('Грешка','Видеото липсва на сървъра!')")
+    #payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
+    #response = xbmc.executeJSONRPC(json.dumps(payload))
+    #data = json.loads(response)
+    #version = data['result']['addon']['version'].replace(".", "")
+    #if version < 2211:
+    #    xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
+    PROTOCOL = 'mpd'
+    DRM = 'com.widevine.alpha'
 
+    is_helper = inputstreamhelper.Helper(PROTOCOL, drm=DRM)
+    if is_helper.check_inputstream():
+        li = xbmcgui.ListItem(path=path)
+        li.setProperty('inputstreamaddon', is_helper.inputstream_addon)
+        li.setProperty('inputstream.adaptive.manifest_type', PROTOCOL)
+        li.setProperty('inputstream.adaptive.license_type', DRM)
+        dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
+        li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
+        #li.setMimeType('application/dash+xml')
+        if title and plot:
+            li.setInfo( type="Video", infoLabels={ "Title": title, "plot": plot})
+        try:
+            xbmcplugin.setResolvedUrl(int(sys.argv[1]), True, li)
+        except:
+            xbmc.executebuiltin("Notification('Грешка','Видеото липсва на сървъра!')")
+ 
 def playEPG(args):
     epg_ref_id = args.get('EPGReferenceID')[0]
     channel_ref_id = args.get('ChannelReferenceID')[0]
