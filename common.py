@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
+import sys
+PY2 = sys.version_info[0] == 2
 import xbmc, xbmcaddon
 import uuid
-import urllib2
+if PY2:
+    import urllib2
+else:
+    import urllib.request
 import datetime
 import json
 #import md5
@@ -16,8 +21,11 @@ deviceSerial = str(uuid.uuid5(uuid.NAMESPACE_DNS, xbmc.getInfoLabel('Network.Mac
 
 def _byteify(data, ignore_dicts = False):
     # if this is a unicode string, return its string representation
-    if isinstance(data, unicode):
-        val = data.encode('utf-8')
+    if (PY2 and isinstance(data, unicode)) or isinstance(data, str):
+        if PY2:
+            val = data.encode('utf-8')
+        else:
+            val = data
         if val[0:6] == '/Date(' and val[-2:] == ')/':
             val = datetime.datetime.utcfromtimestamp(int(val[6:19]) / 1e3 + 60*60*2)
         return val
@@ -27,10 +35,16 @@ def _byteify(data, ignore_dicts = False):
     # if this is a dictionary, return dictionary of byteified keys and values
     # but only if we haven't already byteified it
     if isinstance(data, dict) and not ignore_dicts:
-        return {
-            _byteify(key, ignore_dicts=True): _byteify(value, ignore_dicts=True)
-            for key, value in data.iteritems()
-        }
+        if PY2:
+            return {
+                _byteify(key, ignore_dicts=True): _byteify(value, ignore_dicts=True)
+                for key, value in data.iteritems()
+            }
+        else:
+            return {
+                _byteify(key, ignore_dicts=True): _byteify(value, ignore_dicts=True)
+                for key, value in data.items()
+            }
     # if it's anything else, return it in its original form
     return data
 
@@ -43,10 +57,16 @@ def request(action, params={}):
             'username': username,
             'password': password}#"{md5}" + md5.new(password).hexdigest()}
     data.update(params)
-    req = urllib2.Request(endpoint + action, json.dumps(data))
+    if PY2:
+        req = urllib2.Request(endpoint + action, json.dumps(data))
+    else:
+        req = urllib.request.Request(endpoint + action, json.dumps(data).encode("utf-8"))
     req.add_header('User-Agent', UA)
     req.add_header('Content-Type', 'application/json; charset=UTF-8')
-    f = urllib2.urlopen(req)
+    if PY2:
+        f = urllib2.urlopen(req)
+    else:
+        f = urllib.request.urlopen(req)
     responce = f.read()
     json_responce = json.loads(responce, object_hook=_byteify)
     return json_responce[action + 'Result']

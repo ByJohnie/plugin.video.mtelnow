@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 #Библиотеки, които използват python и Kodi в тази приставка
 import sys
+__all__ = ['PY2']
+PY2 = sys.version_info[0] == 2
+
 import os
 import urllib
-import urlparse
+if PY2:
+    import urlparse
 import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import base64
 import inputstreamhelper
@@ -11,16 +15,21 @@ from common import *
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
-args = urlparse.parse_qs(sys.argv[2][1:])
+if PY2:
+    args = urlparse.parse_qs(sys.argv[2][1:])
+else:
+    args = urllib.parse.parse_qs(sys.argv[2][1:])
 this_plugin = xbmcaddon.Addon().getAddonInfo('path') + '/actions.py'
 
 #xbmcplugin.setContent(addon_handle, 'movies')
 
 def build_url(query):
-    return base_url + '?' + urllib.urlencode(query)
+    if PY2:
+        return base_url + '?' + urllib.urlencode(query)
+    return base_url + '?' + urllib.parse.urlencode(query)
 
 if not username or not password or not xbmcaddon.Addon():
-        xbmcaddon.Addon().openSettings()
+    xbmcaddon.Addon().openSettings()
 #Инициализация
 
 #Меню с директории в приставката
@@ -34,6 +43,7 @@ def MainMenu():
 # Аутентикация
 login = request('CustomerLoginGlobal', {'DRMID': deviceSerial, 'operatorExternalID': "A1_bulgaria"})
 server_time = login['ServerTime']
+__all__ = ['PY2', 'server_time']
 customer_reference_id = login['myCustomer']['AdditionalIdentifiers'][0]['CustomerReferenceId']
 language_reference_id = login['myCustomer']['LanguageExternalID']
 
@@ -47,7 +57,6 @@ def indexChannelsProgram():
         addDir('index_program', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'ChannelReferenceID': channel['ReferenceID']}, funart)
 
 def indexProgram(args):
-    global server_time
     channel_ref_id = args.get('ChannelReferenceID')[0]
     days = int(args.get('days',[1])[0])
     date = server_time - datetime.timedelta(days=days, hours=1)
