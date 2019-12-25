@@ -5,9 +5,12 @@ __all__ = ['PY2']
 PY2 = sys.version_info[0] == 2
 
 import os
-import urllib
+
 if PY2:
     import urlparse
+    import urllib
+else:
+    import urllib.parse
 import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import base64
 import inputstreamhelper
