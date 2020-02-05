@@ -16,9 +16,10 @@ import base64
 import inputstreamhelper
 from common import *
 
-from a1_schema import a1_schema as schema
-from lib.sgqlc.operation import Operation
-from lib.sgqlc.endpoint.http import HTTPEndpoint
+#from a1_schema import a1_schema as schema
+#from lib.sgqlc.operation import Operation
+#from lib.sgqlc.endpoint.http import HTTPEndpoint
+from lib.graphqlclient import GraphQLClient
 
 import web_pdb
 
@@ -56,19 +57,41 @@ if not user_id or not session_id:
         if 'error_code' in responce and responce['error_code']:
             xbmcgui.Dialog().ok('Проблем', responce['message'])
         # register
-        inp = schema.CreateDeviceInput({
-            'clientGeneratedDeviceId': device_id,
-            'deviceType': 'LINUX',
-            'name': 'Kodi on LINUX'
-        })
-        mu = Operation(schema.Nexx4Mutations)
-        cd = mu.create_device(input=inp).__fields__()
         headers = {'SDSEVO_USER_ID': responce['user_id'],
                    'SDSEVO_DEVICE_ID': device_id,
                    'SDSEVO_SESSION_ID': responce['token'],
-                    }
-        endpoint = HTTPEndpoint(url, headers)
-        create_responce = endpoint(mu)
+        }
+        client = GraphQLClient(url)
+        query = '''
+mutation createDevice($input: CreateDeviceInput!) {
+    createDevice(input: $input) {
+        success
+        reauthenticate
+        __typename
+      }
+}
+'''
+        res = client.execute(query, variables={
+            'input':{
+                'clientGeneratedDeviceId': device_id,
+                'deviceType': 'LINUX',
+                'name': 'Kodi on LINUX'
+                }
+            },
+            headers=headers
+        )
+        if 'errors' in res:
+            responce = res['errors']
+        #inp = schema.CreateDeviceInput({
+        #    'clientGeneratedDeviceId': device_id,
+        #    'deviceType': 'LINUX',
+        #    'name': 'Kodi on LINUX'
+        #})
+        #mu = Operation(schema.Nexx4Mutations)
+        #cd = mu.create_device(input=inp).__fields__()
+ 
+        #endpoint = HTTPEndpoint(url, headers)
+        #create_responce = endpoint(mu)
 
     web_pdb.set_trace()
 

@@ -4,7 +4,7 @@ PY2 = sys.version_info[0] == 2
 import xbmc, xbmcaddon
 import uuid
 if PY2:
-    import urlparse
+    from urllib import urlencode
     import urllib2
 else:
     import urllib.request
@@ -56,7 +56,7 @@ def request(action, params={}):
     data = {}
     data.update(params)
     if PY2:
-        req = urllib2.Request(endpoint + action + '?%s' % urlparse.urlencode(data), method='POST')
+        req = urllib2.Request(endpoint + action + '?%s' % urlencode(data), data='')
     else:
         req = urllib.request.Request(endpoint + action + '?%s' % urllib.parse.urlencode(data), method='POST')
     req.add_header('User-Agent', UA)
