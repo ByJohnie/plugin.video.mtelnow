@@ -4,20 +4,22 @@ PY2 = sys.version_info[0] == 2
 import xbmc, xbmcaddon
 import uuid
 if PY2:
+    import urlparse
     import urllib2
 else:
     import urllib.request
+    import urllib.parse
 import datetime
 import json
-#import md5
-
 
 #Място за дефиниране на константи, които ще се използват няколкократно из отделните модули
-#UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'
-UA = 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) Gecko/20100101 Firefox/52.0'
+UA = 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
 username = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_username')
 password = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_password')
 deviceSerial = str(uuid.uuid5(uuid.NAMESPACE_DNS, xbmc.getInfoLabel('Network.MacAddress')))
+user_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_user_id')
+device_id = deviceSerial
+session_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_session_id')
 
 def _byteify(data, ignore_dicts = False):
     # if this is a unicode string, return its string representation
@@ -50,23 +52,19 @@ def _byteify(data, ignore_dicts = False):
 
 #изпращане на requst към endpoint
 def request(action, params={}):
-    endpoint = 'https://tagott.vip.hr/OTTService.svc/restservice/'
-    data = {'deviceType': "118",
-            'deviceSerial': deviceSerial,
-            'operatorReferenceID': "A1_bulgaria",
-            'username': username,
-            'password': password}#"{md5}" + md5.new(password).hexdigest()}
+    endpoint = 'https://web.a1xploretv.bg:8843/ext_dev_facade/auth/'
+    data = {}
     data.update(params)
     if PY2:
-        req = urllib2.Request(endpoint + action, json.dumps(data))
+        req = urllib2.Request(endpoint + action + '?%s' % urlparse.urlencode(data), method='POST')
     else:
-        req = urllib.request.Request(endpoint + action, json.dumps(data).encode("utf-8"))
+        req = urllib.request.Request(endpoint + action + '?%s' % urllib.parse.urlencode(data), method='POST')
     req.add_header('User-Agent', UA)
-    req.add_header('Content-Type', 'application/json; charset=UTF-8')
+    req.add_header('Content-Type', 'application/json')
     if PY2:
         f = urllib2.urlopen(req)
     else:
         f = urllib.request.urlopen(req)
     responce = f.read()
-    json_responce = json.loads(responce, object_hook=_byteify)
-    return json_responce[action + 'Result']
+    json_responce = json.loads(responce)
+    return json_responce
