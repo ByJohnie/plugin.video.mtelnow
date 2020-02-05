@@ -4,7 +4,7 @@ import sys
 __all__ = ['PY2']
 PY2 = sys.version_info[0] == 2
 
-import os
+#import os
 
 if PY2:
     import urlparse
@@ -15,6 +15,13 @@ import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import base64
 import inputstreamhelper
 from common import *
+
+#from a1_schema import a1_schema as schema
+#from lib.sgqlc.operation import Operation
+#from lib.sgqlc.endpoint.http import HTTPEndpoint
+from lib.graphqlclient import GraphQLClient
+
+import web_pdb
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
@@ -33,7 +40,73 @@ def build_url(query):
 
 if not username or not password or not xbmcaddon.Addon():
     xbmcaddon.Addon().openSettings()
+
 #Инициализация
+__all__ = ['PY2']
+
+url = 'https://web.a1xploretv.bg:8443/sdsmiddleware/Mtel/graphql/4.0'
+
+# Аутентикация
+if not user_id or not session_id:
+    login_params = {'devId': device_id, 'user': username, 'pwd': password, 'rqT': 'true', 'refr': 'true'}
+    responce = request('Login', login_params)
+
+    if 'error_code' in responce and responce['error_code'] == 'errClDevNotFound':
+        login_params = {'devId': '', 'user': username, 'pwd': password, 'rqT': 'true'}
+        responce = request('Login', login_params)
+        if 'error_code' in responce and responce['error_code']:
+            xbmcgui.Dialog().ok('Проблем', responce['message'])
+        # register
+        headers = {'SDSEVO_USER_ID': responce['user_id'],
+                   'SDSEVO_DEVICE_ID': device_id,
+                   'SDSEVO_SESSION_ID': responce['token'],
+        }
+        client = GraphQLClient(url)
+        query = '''
+mutation createDevice($input: CreateDeviceInput!) {
+    createDevice(input: $input) {
+        success
+        reauthenticate
+        __typename
+      }
+}
+'''
+        res = client.execute(query, variables={
+            'input':{
+                'clientGeneratedDeviceId': device_id,
+                'deviceType': 'LINUX',
+                'name': 'Kodi on LINUX'
+                }
+            },
+            headers=headers
+        )
+        if 'errors' in res:
+            responce = res['errors']
+        #inp = schema.CreateDeviceInput({
+        #    'clientGeneratedDeviceId': device_id,
+        #    'deviceType': 'LINUX',
+        #    'name': 'Kodi on LINUX'
+        #})
+        #mu = Operation(schema.Nexx4Mutations)
+        #cd = mu.create_device(input=inp).__fields__()
+ 
+        #endpoint = HTTPEndpoint(url, headers)
+        #create_responce = endpoint(mu)
+
+    web_pdb.set_trace()
+
+
+    if 'error_code' in responce and responce['error_code']:
+        xbmcgui.Dialog().ok('Проблем', responce['message'])
+    else:
+        if user_id != responce['user_id']:
+            user_id = responce['user_id']
+            xbmcaddon.Addon(id='plugin.video.mtelnow').setSetting('settings_user_id', user_id)
+        if session_id != responce['token']:
+            session_id = responce['token']
+            xbmcaddon.Addon(id='plugin.video.mtelnow').setSetting('settings_session_id', session_id)
+
+
 
 #Меню с директории в приставката
 def MainMenu():
@@ -44,11 +117,10 @@ def MainMenu():
     addDir('index_npvr', 'Записи', "https://tagott.vip.hr/OTTResources/mtel/home_tile_myrecordings.png")
 
 # Аутентикация
-login = request('CustomerLoginGlobal', {'DRMID': deviceSerial, 'operatorExternalID': "A1_bulgaria"})
-server_time = login['ServerTime']
-__all__ = ['PY2', 'server_time']
-customer_reference_id = login['myCustomer']['AdditionalIdentifiers'][0]['CustomerReferenceId']
-language_reference_id = login['myCustomer']['LanguageExternalID']
+#login = request('CustomerLoginGlobal', {'DRMID': deviceSerial, 'operatorExternalID': "A1_bulgaria"})
+#request('CheckToken', )
+#customer_reference_id = login['myCustomer']['AdditionalIdentifiers'][0]['CustomerReferenceId']
+#language_reference_id = login['myCustomer']['LanguageExternalID']
 
 #Списък с каналите за изграждане на програма
 def indexChannelsProgram():
