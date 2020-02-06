@@ -51,14 +51,17 @@ def _byteify(data, ignore_dicts = False):
     return data
 
 #изпращане на requst към endpoint
-def request(action, params={}):
+def request(action, params={}, method='POST'):
     endpoint = 'https://web.a1xploretv.bg:8843/ext_dev_facade/auth/'
     data = {}
     data.update(params)
     if PY2:
-        req = urllib2.Request(endpoint + action + '?%s' % urlencode(data), data='')
+        tmp = ''
+        if method == 'GET':
+            tmp = None
+        req = urllib2.Request(endpoint + action + '?%s' % urlencode(data), data=tmp)
     else:
-        req = urllib.request.Request(endpoint + action + '?%s' % urllib.parse.urlencode(data), method='POST')
+        req = urllib.request.Request(endpoint + action + '?%s' % urllib.parse.urlencode(data), method=method)
     req.add_header('User-Agent', UA)
     req.add_header('Content-Type', 'application/json')
     if PY2:

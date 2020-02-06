@@ -45,8 +45,15 @@ if not username or not password or not xbmcaddon.Addon():
 __all__ = ['PY2']
 
 url = 'https://web.a1xploretv.bg:8443/sdsmiddleware/Mtel/graphql/4.0'
+client = GraphQLClient(url)
 
 # Аутентикация
+if int(user_id) and session_id:
+    responce = request('CheckToken', {'devId': device_id, 'token': session_id, 'apply': 'true'}, method='GET')
+    if 'error_code' in responce and responce['error_code']:
+        xbmcgui.Dialog().ok('Проблем', responce['message'])
+        session_id = ''
+
 if not user_id or not session_id:
     login_params = {'devId': device_id, 'user': username, 'pwd': password, 'rqT': 'true', 'refr': 'true'}
     responce = request('Login', login_params)
@@ -61,7 +68,6 @@ if not user_id or not session_id:
                    'SDSEVO_DEVICE_ID': device_id,
                    'SDSEVO_SESSION_ID': responce['token'],
         }
-        client = GraphQLClient(url)
         query = '''
 mutation createDevice($input: CreateDeviceInput!) {
     createDevice(input: $input) {
@@ -81,32 +87,33 @@ mutation createDevice($input: CreateDeviceInput!) {
             headers=headers
         )
         if 'errors' in res:
-            responce = res['errors']
-        #inp = schema.CreateDeviceInput({
-        #    'clientGeneratedDeviceId': device_id,
-        #    'deviceType': 'LINUX',
-        #    'name': 'Kodi on LINUX'
-        #})
-        #mu = Operation(schema.Nexx4Mutations)
-        #cd = mu.create_device(input=inp).__fields__()
- 
-        #endpoint = HTTPEndpoint(url, headers)
-        #create_responce = endpoint(mu)
-
-    web_pdb.set_trace()
-
-
+            message = ''
+            for error in res['errors']:
+                message += error['message']
+            xbmcgui.Dialog().ok('Проблем', message)
+            xbmcplugin.endOfDirectory(addon_handle)
+        if 'data' in res and 'createDevice' in res['data']:
+            if res['data']['createDevice']['reauthenticate']:
+                client.execute('''mutation logout {
+  logout
+}
+''', headers=headers)
+                responce = request('Login', login_params)
+        else:
+            xbmcgui.Dialog().ok('Проблем', 'Unknown')
+            xbmcplugin.endOfDirectory(addon_handle)
+        
     if 'error_code' in responce and responce['error_code']:
         xbmcgui.Dialog().ok('Проблем', responce['message'])
     else:
-        if user_id != responce['user_id']:
-            user_id = responce['user_id']
+        if user_id != str(responce['user_id']):
+            user_id = str(responce['user_id'])
             xbmcaddon.Addon(id='plugin.video.mtelnow').setSetting('settings_user_id', user_id)
         if session_id != responce['token']:
             session_id = responce['token']
             xbmcaddon.Addon(id='plugin.video.mtelnow').setSetting('settings_session_id', session_id)
 
-
+web_pdb.set_trace()
 
 #Меню с директории в приставката
 def MainMenu():
