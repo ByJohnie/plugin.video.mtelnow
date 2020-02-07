@@ -15,9 +15,6 @@ import xbmc, xbmcplugin, xbmcgui, xbmcaddon
 import base64
 import inputstreamhelper
 from common import *
-import datetime
-
-import web_pdb
 
 base_url = sys.argv[0]
 addon_handle = int(sys.argv[1])
@@ -42,15 +39,15 @@ if not username or not password or not xbmcaddon.Addon():
 __all__ = ['PY2']
 
 # Аутентикация
-if int(user_id) and session_id:
+if 1 == 2 and int(user_id) and session_id:
     responce = request('CheckToken', {'devId': device_id, 'token': session_id, 'apply': 'true'}, method='GET')
     if 'error_code' in responce and responce['error_code']:
         session_id = ''
-        if responce['error_code'] != 'errClDevNotFound':
+        if responce['error_code'] != 'errClDevNotFound' and responce['error_code'] != 'errExpiredSecToken':
             xbmcgui.Dialog().ok('Проблем', responce['message'])
 
 if not user_id or not session_id:
-    login_params = {'devId': device_id, 'user': username, 'pwd': password, 'rqT': 'true', 'refr': 'true'}
+    login_params = {'devId': device_id, 'user': username, 'pwd': password, 'rqT': 'true'} #, 'refr': 'true'}
     responce = request('Login', login_params)
 
     if 'error_code' in responce and responce['error_code'] == 'errClDevNotFound':
@@ -81,12 +78,6 @@ mutation createDevice($input: CreateDeviceInput!) {
                 }
             }
         )
-        if 'errors' in res:
-            message = ''
-            for error in res['errors']:
-                message += error['message']
-            xbmcgui.Dialog().ok('Проблем', message)
-            xbmcplugin.endOfDirectory(addon_handle)
         if 'data' in res and 'createDevice' in res['data']:
             if res['data']['createDevice']['reauthenticate']:
                 client.execute('''mutation logout {
@@ -96,7 +87,14 @@ mutation createDevice($input: CreateDeviceInput!) {
                 login_params['devId'] = device_id
                 responce = request('Login', login_params)
         else:
-            xbmcgui.Dialog().ok('Проблем', 'Unknown')
+            message = ''
+            if 'errors' in res:
+                message = ''
+                for error in res['errors']:
+                    message += error['message'] + "\n"
+            else:
+                message = 'Unknown'
+            xbmcgui.Dialog().ok('Проблем', message)
             xbmcplugin.endOfDirectory(addon_handle)
         del client
         
@@ -126,8 +124,8 @@ client.execute('''mutation keepAlive {
 #Меню с директории в приставката
 def MainMenu():
     #addDir('НЕ ПРОПУСКАЙТЕ', 'https://'+dns+'/home',5, live)
-    addDir('index_channels', 'На живо', resources_path + "/icon_livetv.png")
-    addDir('index_channels_program', 'ТВ Програма', resources_path + "/icon_tvschedule.png")
+    addDir('indexChannels', 'На живо', resources_path + "/icon_livetv.png")
+    addDir('indexChannelsProgram', 'ТВ Програма', resources_path + "/icon_tvschedule.png")
     addDir('index_vod', 'Видеотека', resources_path + "/icon_videostore.png")
     addDir('index_npvr', 'Записи', resources_path + "/home_tile_myrecordings.png")
 
@@ -290,50 +288,375 @@ fragment metadataExtendedFragment on Metadata {
 '''
     res = client.execute(query, variables=variables)
 
-    #channels = request('ChannelGetByDeviceInstanceExtended', {'customerReferenceID': customer_reference_id})
     for channel in res['data']['channelList']['channels']['edges']:
         currentEvent = channel['node']['currentEvent']['items'][0]
+        dt_start = to_datetime(currentEvent['start'])
+        dt_end = to_datetime(currentEvent['end'])
         addLink(mode='playChannel', 
-                name=currentEvent['start'][11:16] + ' ' + currentEvent['end'][11:16] + ' - ' + currentEvent['title'],
+                name=dt_start.strftime('%H:%M') + ' ' + dt_end.strftime('%H:%M') + ' - ' + currentEvent['title'],
                 iconimage=channel['node']['logo']['url'],
                 params={'cid': channel['node']['id']},
                 banner=channel['node']['logo']['url'],
                 poster=currentEvent['thumbnail']['url'],
                 fanart=currentEvent['backgroundImage']['url'],
-                plot=channel['node']['title'] + ' - ' + currentEvent['start'][11:16] + ' ' + currentEvent['end'][11:16] + "\n" +
-                currentEvent['title'] + "\n" + 
-                currentEvent['eventMetadata']['genre']['title'] + "\n\n" +
-                currentEvent['eventMetadata']['fullDescription']
+                plot=channel['node']['title'] + ' - ' + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" +
+                    currentEvent['title'] + "\n" + 
+                    currentEvent['eventMetadata']['genre']['title'] + "\n\n" +
+                    currentEvent['eventMetadata']['fullDescription']
         )
-#def addLink(mode, name, iconimage, params={}, fanart="", plot="", context_items = {}):
 
 #Списък с каналите за изграждане на програма
 def indexChannelsProgram():
-    channels = request('ChannelGetByDeviceInstanceExtended', {'customerReferenceID': customer_reference_id})
-    for channel in channels:
-        funart = channel['Icon']
-        if 'CurrentProgrammeImagePath' in channel:
-            funart = channel['CurrentProgrammeImagePath']
-        addDir('index_program', channel['Name'] + ' - ' + channel['CurrentProgramme'], channel['Icon'], {'ChannelReferenceID': channel['ReferenceID']}, funart)
+    variables={"channelListId":"59-6","firstChannels":1000,"after":None,"currentTime":datetime.datetime.utcnow().isoformat()[0:23]+'Z',"thumbnailHeight":280,"backgroundHeight":780,"backgroundWidth":1920,"shortDescriptionMaxLength":0}
+    query = '''
+query channelList($firstChannels: Int, $channelListId: ID!, $after: String, $currentTime: Date!, $thumbnailHeight: Int!, $backgroundHeight: Int!, $backgroundWidth: Int!, $shortDescriptionMaxLength: Int!) {
+  channelList(id: $channelListId) {
+    ...cacheInfoFragment
+    name
+    kind
+    channels(first: $firstChannels, after: $after) {
+      ...cacheInfoFragment
+      totalCount
+      pageInfo {
+        ...pageInfoFragment
+        __typename
+      }
+      edges {
+        cursor
+        ...cacheInfoFragment
+        node {
+          ...cacheInfoFragment
+          title
+          logo(width: 90, height: 33, flavour: NORMAL) {
+            ...imageFragment
+            __typename
+          }
+          userInfo {
+            ...cacheInfoFragment
+            subscribed
+            __typename
+          }
+          currentEvent: eventsAt(time: $currentTime, previous: 0, following: 0) {
+            ...cacheInfoFragment
+            itemCount
+            items {
+              ...nowPlayingEventFragment
+              __typename
+            }
+            __typename
+          }
+          __typename
+        }
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+fragment nowPlayingEventFragment on Event {
+  ...cacheInfoFragment
+  ...eventInfoBasicFragment
+  eventEntitlements: entitlements {
+    ...eventEntitlementsFragment
+    __typename
+  }
+  eventMetadata: metadata {
+    ...metadataExtendedFragment
+    __typename
+  }
+  __typename
+}
+
+fragment eventEntitlementsFragment on EventEntitlements {
+  pauseLiveTV
+  restartTV
+  catchupTV
+  catchupTVAvailableUntil
+  networkRecording
+  networkRecordingPlannableUntil
+  __typename
+}
+
+fragment pageInfoFragment on PageInfo {
+  hasNextPage
+  hasPreviousPage
+  startCursor
+  endCursor
+  __typename
+}
+
+fragment cacheInfoFragment on Cacheable {
+  __typename
+  id
+  expiry
+}
+
+fragment imageFragment on Image {
+  ...cacheInfoFragment
+  url
+  width
+  height
+  __typename
+}
+
+fragment metadataExtendedFragment on Metadata {
+  ...cacheInfoFragment
+  title
+  originalTitle
+  shortDescription(maxLength: $shortDescriptionMaxLength)
+  country
+  year
+  fullDescription
+  genre {
+    ...cacheInfoFragment
+    title
+    __typename
+  }
+  seriesInfo {
+    ...cacheInfoFragment
+    title
+    __typename
+  }
+  episodeInfo {
+    ...cacheInfoFragment
+    number
+    title
+    season
+    __typename
+  }
+  actors
+  directors
+  ratings {
+    ...cacheInfoFragment
+    value
+    name
+    __typename
+  }
+  __typename
+}
+
+fragment eventInfoBasicFragment on Event {
+  title
+  start
+  end
+  blackout
+  startOverTVBeforeTime
+  startOverTVAfterTime
+  thumbnail(height: $thumbnailHeight) {
+    ...imageFragment
+    __typename
+  }
+  parentalRating {
+    ...parentalRatingFragment
+    __typename
+  }
+  backgroundImage(width: $backgroundWidth, height: $backgroundHeight) {
+    ...imageFragment
+    __typename
+  }
+  __typename
+}
+
+fragment imageFragment on Image {
+  ...cacheInfoFragment
+  url
+  width
+  height
+  __typename
+}
+
+fragment parentalRatingFragment on ParentalRating {
+  ...cacheInfoFragment
+  title
+  description
+  rank
+  adult
+  __typename
+}
+
+'''
+    res = client.execute(query, variables=variables)
+
+    for channel in res['data']['channelList']['channels']['edges']:
+        currentEvent = channel['node']['currentEvent']['items'][0]
+        dt_start = to_datetime(currentEvent['start'])
+        dt_end = to_datetime(currentEvent['end'])
+        addDir(mode='indexProgram', 
+               name=channel['node']['title'] + ' - ' + currentEvent['title'],
+               iconimage=channel['node']['logo']['url'],
+               params={'cid': channel['node']['id']},
+               banner=channel['node']['logo']['url'],
+               poster=currentEvent['thumbnail']['url'],
+               fanart=currentEvent['backgroundImage']['url'],
+               plot=channel['node']['title'] + ' - ' + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" +
+                   currentEvent['title'] + "\n" + 
+                   currentEvent['eventMetadata']['genre']['title'] + "\n\n" +
+                   currentEvent['eventMetadata']['fullDescription']
+        )
 
 def indexProgram(args):
-    channel_ref_id = args.get('ChannelReferenceID')[0]
+    channel_id = args.get('cid')[0]
     days = int(args.get('days',[1])[0])
-    date = server_time - datetime.timedelta(days=days, hours=1)
-    epg = request('EPGGetByChannelReferenceIDForDate', 
-                    {'customerReferenceID': customer_reference_id, 
-                     'channelReferenceID': channel_ref_id, 
-                     'date': date.strftime('%Y-%m-%dT%H:%M')})
-    for rec in reversed(epg):
-        time_end = rec['TimeEnd']
-        time_start = rec['TimeStart']
-        desc = 'Час: ' + time_start.strftime('%d.%m.%Y %H:%M') + ' - ' + time_end.strftime('%H:%M')
-        title = time_start.strftime('%H:%M') + ' ' + time_end.strftime('%H:%M') + ' ' + rec['Title']
-        addLink('play_epg', title, rec['ImagePath'],
-                {'EPGReferenceID': rec['ReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
-                rec['ImagePath'], desc, 
-                context_items = {'Запиши': "insert_npvr," + customer_reference_id + "," + rec['ReferenceID']})
-    addDir('index_program', ' << ' + date.strftime('%Y-%m-%d'), '', {'ChannelReferenceID':channel_ref_id, 'days': days + 1})
+    start_date = datetime.datetime.utcnow() - datetime.timedelta(days=days, hours=0)
+    variables = {
+        "channelId": channel_id,
+        "channelLogoFlavour": "NORMAL",
+        "channelLogoHeight": 41,
+        "channelLogoWidth": 112,
+        "startDate": start_date.isoformat()+'Z',
+        "thumbnailHeight": 280,
+        "timeslotDurations": [86400],
+        "shortDescriptionMaxLength": 0,
+        "backgroundHeight":780,
+        "backgroundWidth":1920
+    }
+    query = '''
+query channelGuide($channelId: ID!, $startDate: Date!, $timeslotDurations: [Int]!, $thumbnailHeight: Int!, $channelLogoWidth: Int!, $channelLogoHeight: Int!, $channelLogoFlavour: ImageFlavour, $shortDescriptionMaxLength: Int!, $backgroundHeight: Int!, $backgroundWidth: Int!) {
+  channel(id: $channelId) {
+    ...cacheInfoFragment
+    title
+    userInfo {
+      ...cacheInfoFragment
+      subscribed
+      __typename
+    }
+    logo(width: $channelLogoWidth, height: $channelLogoHeight, flavour: $channelLogoFlavour) {
+      ...imageFragment
+      __typename
+    }
+    events: eventBlocks(start: $startDate, blockDurations: $timeslotDurations) {
+      ...cacheInfoFragment
+      itemCount
+      items {
+        ...itemData
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+
+fragment itemData on Event {
+  ...cacheInfoFragment
+  title
+  start
+  end
+  parentalRating {
+    ...cacheInfoFragment
+    rank
+    adult
+    __typename
+  }
+  thumbnail(height: $thumbnailHeight) {
+    ...cacheInfoFragment
+    url
+    __typename
+  }
+  backgroundImage(width: $backgroundWidth, height: $backgroundHeight) {
+    ...imageFragment
+    __typename
+  }
+  eventEntitlements: entitlements {
+    restartTV
+    catchupTV
+    catchupTVAvailableUntil
+    __typename
+  }
+  eventMetadata: metadata {
+    ...metadataExtendedFragment
+    __typename
+  }
+  __typename
+}
+
+fragment cacheInfoFragment on Cacheable {
+  __typename
+  id
+  expiry
+}
+
+fragment imageFragment on Image {
+  ...cacheInfoFragment
+  url
+  width
+  height
+  __typename
+}
+
+fragment metadataExtendedFragment on Metadata {
+  ...cacheInfoFragment
+  title
+  originalTitle
+  shortDescription(maxLength: $shortDescriptionMaxLength)
+  country
+  year
+  fullDescription
+  genre {
+    ...cacheInfoFragment
+    title
+    __typename
+  }
+  seriesInfo {
+    ...cacheInfoFragment
+    title
+    __typename
+  }
+  episodeInfo {
+    ...cacheInfoFragment
+    number
+    title
+    season
+    __typename
+  }
+  actors
+  directors
+  ratings {
+    ...cacheInfoFragment
+    value
+    name
+    __typename
+  }
+  __typename
+}
+
+'''
+    res = client.execute(query, variables=variables)
+    channel = res['data']['channel']
+
+    for event in reversed(res['data']['channel']['events'][0]['items']):
+        dt_start = to_datetime(event['start'])
+        dt_end = to_datetime(event['end'])
+        addLink(mode='playEvent', 
+                name=dt_start.strftime('%H:%M') + ' ' + dt_end.strftime('%H:%M') + ' - ' + event['title'],
+                iconimage=event['thumbnail']['url'],
+                params={'eid': event['id']},
+                banner=event['thumbnail']['url'],
+                poster=event['thumbnail']['url'],
+                fanart=event['backgroundImage']['url'],
+                plot=channel['title'] + ' - ' + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" +
+                  event['title'] + "\n" + 
+                  event['eventMetadata']['genre']['title'] + "\n\n" +
+                  event['eventMetadata']['fullDescription']
+        )
+    addDir('indexProgram', ' << ' + start_date.strftime('%Y-%m-%d'), '', {'cid':channel_id, 'days': days + 1})
+
+    #date = server_time - datetime.timedelta(days=days, hours=1)
+    #epg = request('EPGGetByChannelReferenceIDForDate', 
+    #                {'customerReferenceID': customer_reference_id, 
+    #                 'channelReferenceID': channel_ref_id, 
+    #                 'date': date.strftime('%Y-%m-%dT%H:%M')})
+    #for rec in reversed(epg):
+    #    time_end = rec['TimeEnd']
+    #    time_start = rec['TimeStart']
+    #    desc = 'Час: ' + time_start.strftime('%d.%m.%Y %H:%M') + ' - ' + time_end.strftime('%H:%M')
+    #    title = time_start.strftime('%H:%M') + ' ' + time_end.strftime('%H:%M') + ' ' + rec['Title']
+    #    addLink('play_epg', title, rec['ImagePath'],
+    #            {'EPGReferenceID': rec['ReferenceID'], 'ChannelReferenceID': rec['ChannelReferenceID']}, 
+    #            rec['ImagePath'], desc, 
+    #            context_items = {'Запиши': "insert_npvr," + customer_reference_id + "," + rec['ReferenceID']})
 
 def PlayChannel(args):
     channel_id = args.get('cid')[0]
@@ -383,18 +706,67 @@ mutation playChannel($input: PlayChannelInput!) {
     xbmcaddon.Addon(id='plugin.video.mtelnow').setSetting('settings_playback_session_id', res['data']['playChannel']['playbackInfo']['sessionId'])
     playPath(res['data']['playChannel']['playbackInfo']['url'])
 
+def playEvent(args):
+    event_id = args.get('eid')[0]
+
+    playback_session_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_playback_session_id')
+    if playback_session_id:
+        variables = {"input": {"sessionId": playback_session_id}}
+        query = '''
+mutation stopPlayback($input: StopPlaybackInput!) {
+  stopPlayback(input: $input) {
+    success
+    __typename
+  }
+}
+
+'''
+        client.execute(query, variables=variables)
+
+    variables = {"input": {"eventId": event_id, "replaceSessionId": None}}
+    query = '''
+mutation catchupEvent($input: CatchupEventInput!) {
+  catchupEvent(input: $input) {
+    playbackInfo {
+      url
+      streamStart
+      streamEnd
+      sessionId
+      event {
+        id
+        startOverTVBeforeTime
+        startOverTVAfterTime
+        channel {
+          id
+          __typename
+        }
+        __typename
+      }
+      heartbeat {
+        ... on HttpHeartbeat {
+          url
+          interval
+          includeAuthHeaders
+          __typename
+        }
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+'''
+    res = client.execute(query, variables)
+    xbmcaddon.Addon(id='plugin.video.mtelnow').setSetting('settings_playback_session_id', res['data']['catchupEvent']['playbackInfo']['sessionId'])
+    playPath(res['data']['catchupEvent']['playbackInfo']['url'])
+
 #Зареждане на видео
 def Play(args):
     path = args.get('path')[0]
     playPath(path)
 
 def playPath(path, title = "", plot=""):
-    #payload = {'jsonrpc': '2.0', 'id': 1, 'method': 'Addons.GetAddonDetails', 'params': {'addonid': 'inputstream.adaptive','properties': ['version']}}
-    #response = xbmc.executeJSONRPC(json.dumps(payload))
-    #data = json.loads(response)
-    #version = data['result']['addon']['version'].replace(".", "")
-    #if version < 2211:
-    #    xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
     PROTOCOL = 'mpd'
     DRM = 'com.widevine.alpha'
 
@@ -404,7 +776,7 @@ def playPath(path, title = "", plot=""):
         li.setProperty('inputstreamaddon', is_helper.inputstream_addon)
         li.setProperty('inputstream.adaptive.manifest_type', PROTOCOL)
         li.setProperty('inputstream.adaptive.license_type', DRM)
-        dt_custom_data = base64.b64decode('aHR0cHM6Ly93dnBzLmExeHBsb3JldHYuYmc6ODA2My8/ZGV2aWNlSWQ9WXpVNU1ERmpNRGN0WXpNNU15MDBZamd3TFdJek16UXRZbVV6TVdGbE9USXpZelUw')
+        dt_custom_data = 'https://wvps.a1xploretv.bg:8063/?deviceId=' + str(base64.b64encode(bytes(device_id, 'utf-8')))
         li.setProperty('inputstream.adaptive.license_key', dt_custom_data + '||R{SSM}|')
         #li.setMimeType('application/dash+xml')
         if title and plot:
@@ -494,8 +866,8 @@ def indexVODSeries(args):
                      {'ReferenceID': item['ReferenceID']}, 
                      funart, plot)
 
-#Модул за добавяне на отделно заглавие и неговите атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def addLink(mode, name, iconimage, params={}, fanart="", plot="", context_items = {}, banner="", poster=""):
+#Модул за добавяне на отделно заглавие и неговите атрибути към съдържанието на показваната в Kodi директория
+def addLink(mode, name, iconimage, params={}, fanart="", plot="", context_items = {}, banner="", poster="", isFolder=False, isPlayable=True):
     query = {'mode': mode}
     if params:
         query.update(params)
@@ -507,37 +879,35 @@ def addLink(mode, name, iconimage, params={}, fanart="", plot="", context_items 
     li = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
     li.setArt({ 'thumb': iconimage,'poster': poster, 'banner' : banner, 'fanart': fanart })
     li.setInfo( type="Video", infoLabels={"Title": name, "plot": plot})
-    li.setProperty("IsPlayable" , "true")
+    if isPlayable:
+        li.setProperty("IsPlayable" , "true")
     if context_items:
         pre_items = []
         for item in context_items:
             pre_items.append((item, "XBMC.RunScript(" + this_plugin + ", " + context_items[item] + ")"))
         li.addContextMenuItems(pre_items)
-    return xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=li, isFolder=False)
+    return xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]), url=url, listitem=li, isFolder=isFolder)
 
 #Модул за добавяне на отделна директория и нейните атрибути към съдържанието на показваната в Kodi директория - НЯМА НУЖДА ДА ПРОМЕНЯТЕ НИЩО ТУК
-def addDir(mode, name, iconimage, params={}, funart="", plot=""):
-    query = {'mode': mode}
-    if params:
-        query.update(params)
-    url = build_url(query)
-    if not funart:
-        funart = iconimage
-    li = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
-    li.setArt({ 'thumb': iconimage,'poster': funart, 'banner': funart, 'fanart': funart })
-    li.setInfo( type="Video", infoLabels={"Title": name, "plot": plot})
-    return xbmcplugin.addDirectoryItem(handle=addon_handle, url=url, listitem=li, isFolder=True)
-
+def addDir(mode, name, iconimage, params={}, fanart="", plot="", context_items = {}, banner="", poster=""):
+    return addLink(mode, name, iconimage, params=params, fanart=fanart, plot=plot, context_items=context_items, banner=banner, poster=poster, isFolder=True, isPlayable=False)
 
 mode = args.get('mode', None)
 
 #Списък на отделните подпрограми/модули в тази приставка - трябва напълно да отговаря на кода отгоре
 if mode == None:
         MainMenu()
-elif mode[0] == 'index_channels':
+elif mode[0] == 'indexChannels':
         indexChannels()
 elif mode[0] == 'playChannel':
         PlayChannel(args)
+elif mode[0] == 'indexChannelsProgram':
+        indexChannelsProgram()
+elif mode[0] == 'indexProgram':
+        indexProgram(args)
+elif mode[0] == 'playEvent':
+        playEvent(args)
+
 elif mode[0] == 'play':
         Play(args)
 elif mode[0] == 'index_npvr':
@@ -552,9 +922,5 @@ elif mode[0] == 'play_vod':
         playVOD(args)
 elif mode[0] == 'play_epg':
         playEPG(args)
-elif mode[0] == 'index_channels_program':
-        indexChannelsProgram()
-elif mode[0] == 'index_program':
-        indexProgram(args)
         
 xbmcplugin.endOfDirectory(addon_handle)

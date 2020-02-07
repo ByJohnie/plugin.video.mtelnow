@@ -9,7 +9,7 @@ if PY2:
 else:
     import urllib.request
     import urllib.parse
-import datetime
+import datetime, time, pytz
 import json
 from lib.graphqlclient import GraphQLClient
 
@@ -31,6 +31,9 @@ class my_gqlc(GraphQLClient):
         res = self._send(query, variables, self.headers)
         debug(res)
         return res
+
+def to_datetime(instr):
+    return datetime.datetime(*(time.strptime(instr, '%Y-%m-%dT%H:%M:%SZ')[0:6])).replace(tzinfo=pytz.timezone('UTC')).astimezone(pytz.timezone('Europe/Sofia'))
 
 def _byteify(data, ignore_dicts = False):
     # if this is a unicode string, return its string representation
