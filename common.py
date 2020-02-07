@@ -11,6 +11,7 @@ else:
     import urllib.parse
 import datetime
 import json
+from lib.graphqlclient import GraphQLClient
 
 #Място за дефиниране на константи, които ще се използват няколкократно из отделните модули
 UA = 'Mozilla/5.0 (X11; Linux x86_64; rv:52.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.130 Safari/537.36'
@@ -20,6 +21,16 @@ deviceSerial = str(uuid.uuid5(uuid.NAMESPACE_DNS, xbmc.getInfoLabel('Network.Mac
 user_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_user_id')
 device_id = deviceSerial
 session_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_session_id')
+profile_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_profile_id')
+
+class my_gqlc(GraphQLClient):
+    def __init__(self, headers):
+        self.endpoint = 'https://web.a1xploretv.bg:8443/sdsmiddleware/Mtel/graphql/4.0'
+        self.headers = headers
+    def execute(self, query, variables=None):
+        res = self._send(query, variables, self.headers)
+        debug(res)
+        return res
 
 def _byteify(data, ignore_dicts = False):
     # if this is a unicode string, return its string representation
@@ -70,4 +81,8 @@ def request(action, params={}, method='POST'):
         f = urllib.request.urlopen(req)
     responce = f.read()
     json_responce = json.loads(responce)
+    debug(json_responce)
     return json_responce
+
+def debug(obj):
+    xbmc.log(json.dumps(obj, indent=2), xbmc.LOGNOTICE)
