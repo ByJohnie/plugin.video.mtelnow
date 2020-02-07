@@ -133,7 +133,7 @@ def MainMenu():
 
 #Разлистване видеата на първата подадена страница
 def indexChannels():
-    variables={"channelListId":"59-6","channelAfterCursor":None,"currentTime":"2020-02-06T23:38:00.000Z","logoWidth":76,"logoHeight":28,"thumbnailHeight":280,"backgroundHeight":780,"backgroundWidth":1920,"shortDescriptionMaxLength":0}
+    variables={"channelListId":"59-6","channelAfterCursor":None,"currentTime":datetime.datetime.utcnow().isoformat()[0:23]+'Z',"logoWidth":76,"logoHeight":28,"thumbnailHeight":280,"backgroundHeight":780,"backgroundWidth":1920,"shortDescriptionMaxLength":0}
     query = '''
 query liveTV($channelAfterCursor: String, $currentTime: Date!, $logoWidth: Int!, $logoHeight: Int!, $thumbnailHeight: Int!, $backgroundHeight: Int!, $backgroundWidth: Int!, $channelListId: ID!, $shortDescriptionMaxLength: Int!) {
   channelList(id: $channelListId) {
