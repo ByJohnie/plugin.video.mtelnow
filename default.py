@@ -396,16 +396,16 @@ def playPath(path, title = "", plot=""):
     #if version < 2211:
     #    xbmcgui.Dialog().ok('Грешка','Inputsream.Adaptive е стара версия, моля обновете!')
     PROTOCOL = 'mpd'
-    #DRM = 'com.widevine.alpha'
+    DRM = 'com.widevine.alpha'
 
-    is_helper = inputstreamhelper.Helper(PROTOCOL)
+    is_helper = inputstreamhelper.Helper(PROTOCOL, drm=DRM)
     if is_helper.check_inputstream():
         li = xbmcgui.ListItem(path=path)
         li.setProperty('inputstreamaddon', is_helper.inputstream_addon)
         li.setProperty('inputstream.adaptive.manifest_type', PROTOCOL)
-        #li.setProperty('inputstream.adaptive.license_type', DRM)
-        #dt_custom_data = base64.b64decode('aHR0cHM6Ly92aXBvdHR2bXhkcm13di52aXAuaHIvP2RldmljZUlkPWFHVnNiRzg9fHxSe1NTTX18')
-        #li.setProperty('inputstream.adaptive.license_key', dt_custom_data)
+        li.setProperty('inputstream.adaptive.license_type', DRM)
+        dt_custom_data = base64.b64decode('aHR0cHM6Ly93dnBzLmExeHBsb3JldHYuYmc6ODA2My8/ZGV2aWNlSWQ9WXpVNU1ERmpNRGN0WXpNNU15MDBZamd3TFdJek16UXRZbVV6TVdGbE9USXpZelUw')
+        li.setProperty('inputstream.adaptive.license_key', dt_custom_data + '||R{SSM}|')
         #li.setMimeType('application/dash+xml')
         if title and plot:
             li.setInfo( type="Video", infoLabels={ "Title": title, "plot": plot})
