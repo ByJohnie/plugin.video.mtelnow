@@ -32,7 +32,7 @@ device_id = args.get('device_id',[''])[0]
 if not device_id:
     mac = xbmc.getInfoLabel('Network.MacAddress')
     # Мак-а може да се върне като Busy, ако kodi прави нещо друго, затова пробваме докато успеем
-    while mac != 'Busy':
+    while mac == 'Busy':
         time.sleep(0.5)
         mac = xbmc.getInfoLabel('Network.MacAddress')
     device_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, mac))
@@ -75,6 +75,3 @@ def request(action, params={}, method='POST'):
     json_responce = json.loads(responce)
     debug(json_responce)
     return json_responce
-
-def debug(obj):
-    xbmc.log(json.dumps(obj, indent=2), xbmc.LOGDEBUG)
