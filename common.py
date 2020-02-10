@@ -6,6 +6,7 @@ import uuid
 if PY2:
     from urllib import urlencode
     import urllib2
+    import urlparse
 else:
     import urllib.request
     import urllib.parse
