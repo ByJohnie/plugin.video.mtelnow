@@ -14,6 +14,9 @@ import datetime, time, pytz
 import json
 from lib.graphqlclient import GraphQLClient
 
+def debug(obj):
+    xbmc.log(json.dumps(obj, indent=2), xbmc.LOGDEBUG)
+
 #Място за дефиниране на константи, които ще се използват няколкократно из отделните модули
 username = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_username')
 password = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_password')
