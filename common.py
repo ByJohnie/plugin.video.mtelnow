@@ -22,6 +22,7 @@ username = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_usern
 password = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_password')
 user_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_user_id')
 session_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_session_id')
+max_bandwidth = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_max_bandwidth')
 if PY2:
     args = urlparse.parse_qs(sys.argv[2][1:])
 else:
