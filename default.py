@@ -217,7 +217,7 @@ def indexChannelGuide(args):
                   event['eventMetadata']['fullDescription'],
                 context_items={'Добави в моя списък': 'favoriteItem,' + str(profile_id) + ',' + str(event['id'])}
         )
-    addDir('indexChannelList', ' << ' + start_date.strftime('%Y-%m-%d'), '', {'channel_id':channel_id, 'days': days + 1})
+    addDir('indexChannelGuide', ' << ' + start_date.strftime('%Y-%m-%d'), '', {'channel_id':channel_id, 'days': days + 1})
 
 # Пускане на канал в реално време
 def PlayChannel(args):
