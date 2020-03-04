@@ -217,7 +217,7 @@ def indexChannelGuide(args):
                   event['eventMetadata']['fullDescription'],
                 context_items={'Добави в моя списък': 'favoriteItem,' + str(profile_id) + ',' + str(event['id'])}
         )
-    addDir('indexChannelList', ' << ' + start_date.strftime('%Y-%m-%d'), '', {'channel_id':channel_id, 'days': days + 1})
+    addDir('indexChannelGuide', ' << ' + start_date.strftime('%Y-%m-%d'), '', {'channel_id':channel_id, 'days': days + 1})
 
 # Пускане на канал в реално време
 def PlayChannel(args):
@@ -302,6 +302,8 @@ def playPath(path, title = "", plot=""):
         li.setProperty('inputstreamaddon', is_helper.inputstream_addon)
         li.setProperty('inputstream.adaptive.manifest_type', PROTOCOL)
         li.setProperty('inputstream.adaptive.license_type', DRM)
+        if max_bandwidth:
+          li.setProperty('inputstream.adaptive.max_bandwidth', max_bandwidth)
         if PY2:
           device_hash = base64.b64encode(device_id)
         else:
