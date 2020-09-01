@@ -143,13 +143,39 @@ def indexLiveTV():
     res = client.execute(open(resources_path + '/liveTV.graphql').read(), variables=variables)
 
     for channel in res['data']['channelList']['channels']['edges']:
-        currentEvent = channel['node']['currentEvent']['items'][0]
-        adult = currentEvent['parentalRating']['adult']
-        if not(adult) or (adult and adult_setting):
-            dt_start = to_datetime(currentEvent['start'])
-            dt_end = to_datetime(currentEvent['end'])
-            addLink(mode='playChannel', 
-                    name=dt_start.strftime('%H:%M') + ' ' + dt_end.strftime('%H:%M') + ' - ' + currentEvent['title'],
+        if channel['node']['currentEvent']['items']:
+            currentEvent = channel['node']['currentEvent']['items'][0]
+            adult = currentEvent['parentalRating']['adult']
+            if not(adult) or (adult and adult_setting):
+                dt_start = to_datetime(currentEvent['start'])
+                dt_end = to_datetime(currentEvent['end'])
+                addLink(mode='playChannel', 
+                        name=dt_start.strftime('%H:%M') + ' ' + dt_end.strftime('%H:%M') + ' - ' + currentEvent['title'],
+                        iconimage=channel['node']['logo']['url'],
+                        params={'channel_id': channel['node']['id']},
+                        banner=channel['node']['logo']['url'],
+                        poster=currentEvent['thumbnail']['url'],
+                        fanart=currentEvent['backgroundImage']['url'],
+                        plot=channel['node']['title'] + ' - ' + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" +
+                            currentEvent['title'] + "\n" + 
+                            currentEvent['eventMetadata']['genre']['title'] + "\n\n" +
+                            currentEvent['eventMetadata']['fullDescription']
+                )
+
+# Списък с канали за преглед назад във времето
+def indexChannelList():
+    variables={"channelListId":"59-6","firstChannels":1000,"after":None,"currentTime":datetime.datetime.utcnow().isoformat()[0:23]+'Z',"thumbnailHeight":280,"backgroundHeight":780,"backgroundWidth":1920,"shortDescriptionMaxLength":0}
+    res = client.execute(open(resources_path + '/channelList.graphql').read(), variables=variables)
+
+    for channel in res['data']['channelList']['channels']['edges']:
+        if channel['node']['currentEvent']['items']:
+            currentEvent = channel['node']['currentEvent']['items'][0]
+            adult = currentEvent['parentalRating']['adult']
+            if not(adult) or (adult and adult_setting):
+                dt_start = to_datetime(currentEvent['start'])
+                dt_end = to_datetime(currentEvent['end'])
+                addDir(mode='indexChannelGuide', 
+                    name=channel['node']['title'] + ' - ' + currentEvent['title'],
                     iconimage=channel['node']['logo']['url'],
                     params={'channel_id': channel['node']['id']},
                     banner=channel['node']['logo']['url'],
@@ -159,31 +185,7 @@ def indexLiveTV():
                         currentEvent['title'] + "\n" + 
                         currentEvent['eventMetadata']['genre']['title'] + "\n\n" +
                         currentEvent['eventMetadata']['fullDescription']
-            )
-
-# Списък с канали за преглед назад във времето
-def indexChannelList():
-    variables={"channelListId":"59-6","firstChannels":1000,"after":None,"currentTime":datetime.datetime.utcnow().isoformat()[0:23]+'Z',"thumbnailHeight":280,"backgroundHeight":780,"backgroundWidth":1920,"shortDescriptionMaxLength":0}
-    res = client.execute(open(resources_path + '/channelList.graphql').read(), variables=variables)
-
-    for channel in res['data']['channelList']['channels']['edges']:
-        currentEvent = channel['node']['currentEvent']['items'][0]
-        adult = currentEvent['parentalRating']['adult']
-        if not(adult) or (adult and adult_setting):
-            dt_start = to_datetime(currentEvent['start'])
-            dt_end = to_datetime(currentEvent['end'])
-            addDir(mode='indexChannelGuide', 
-                name=channel['node']['title'] + ' - ' + currentEvent['title'],
-                iconimage=channel['node']['logo']['url'],
-                params={'channel_id': channel['node']['id']},
-                banner=channel['node']['logo']['url'],
-                poster=currentEvent['thumbnail']['url'],
-                fanart=currentEvent['backgroundImage']['url'],
-                plot=channel['node']['title'] + ' - ' + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" +
-                    currentEvent['title'] + "\n" + 
-                    currentEvent['eventMetadata']['genre']['title'] + "\n\n" +
-                    currentEvent['eventMetadata']['fullDescription']
-            )
+                )
 
 # Списък на програмата на даден канал
 def indexChannelGuide(args):
