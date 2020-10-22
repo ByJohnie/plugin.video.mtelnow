@@ -23,6 +23,10 @@ password = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_passw
 user_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_user_id')
 session_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_session_id')
 max_bandwidth = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_max_bandwidth')
+if xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_adult') == "false":
+    adult_setting = False
+else:
+    adult_setting = True
 if PY2:
     args = urlparse.parse_qs(sys.argv[2][1:])
 else:
