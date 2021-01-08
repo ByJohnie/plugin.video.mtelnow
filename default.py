@@ -307,7 +307,11 @@ def playPath(path, title = "", plot=""):
     is_helper = inputstreamhelper.Helper(PROTOCOL, drm=DRM)
     if is_helper.check_inputstream():
         li = xbmcgui.ListItem(path=path)
-        li.setProperty('inputstreamaddon', is_helper.inputstream_addon)
+        li.setMimeType('application/xml+dash')
+        if PY2:
+            li.setProperty('inputstreamaddon', is_helper.inputstream_addon)
+        else:
+            li.setProperty('inputstream', is_helper.inputstream_addon)
         li.setProperty('inputstream.adaptive.manifest_type', PROTOCOL)
         li.setProperty('inputstream.adaptive.license_type', DRM)
         if max_bandwidth:
@@ -376,8 +380,8 @@ def addLink(mode, name, iconimage, params={}, fanart="", plot="", context_items 
         banner = fanart
     if not poster:
         poster = fanart
-    li = xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
-    li.setArt({ 'thumb': iconimage,'poster': poster, 'banner' : banner, 'fanart': fanart })
+    li = xbmcgui.ListItem(name)
+    li.setArt({ 'thumb': iconimage,'poster': poster, 'banner' : banner, 'fanart': fanart, 'icon':iconimage })
     li.setInfo( type="Video", infoLabels={"Title": name, "plot": plot})
     if isPlayable:
         li.setProperty("IsPlayable" , "true")
