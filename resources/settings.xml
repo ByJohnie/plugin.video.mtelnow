@@ -10,5 +10,6 @@
         <setting id="settings_user_id" type="number" default="" visible="False"/>
         <setting id="settings_session_id" type="text" default="" visible="False"/>
         <setting id="settings_playback_session_id" type="text" defaults="" visible="False"/>
+        <setting id="settings_device_id" type="text" defaults="" visible="False"/>
     </category>
 </settings>
