@@ -35,12 +35,15 @@ else:
 # device_id, ще го мъкнем като параметър, че понякога се взима бавно
 device_id = args.get('device_id',[''])[0]
 if not device_id:
-    mac = xbmc.getInfoLabel('Network.MacAddress')
-    # Мак-а може да се върне като Busy, ако kodi прави нещо друго, затова пробваме докато успеем
-    while mac == 'Busy':
-        time.sleep(0.5)
+    device_id = xbmcaddon.Addon(id='plugin.video.mtelnow').getSetting('settings_device_id')
+    if not device_id:
         mac = xbmc.getInfoLabel('Network.MacAddress')
-    device_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, mac))
+        # Мак-а може да се върне като Busy, ако kodi прави нещо друго, затова пробваме докато успеем
+        while mac == 'Busy':
+            time.sleep(0.5)
+            mac = xbmc.getInfoLabel('Network.MacAddress')
+        device_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, mac))
+        xbmcaddon.Addon(id='plugin.video.mtelnow').setSetting('settings_device_id', device_id)
 
 # Класс за ползване на GraphQL
 class my_gqlc(GraphQLClient):
