@@ -76,7 +76,7 @@ if not user_id or not session_id or reauth:
             'input':{
                 'clientGeneratedDeviceId': device_id,
                 'deviceType': 'LINUX',
-                'name': 'Kodi on LINUX'
+                'name': xbmc.getInfoLabel('System.FriendlyName')
                 }
             }
         )
