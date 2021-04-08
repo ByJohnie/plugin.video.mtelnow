@@ -149,6 +149,15 @@ def indexLiveTV():
             if not(adult) or (adult and adult_setting):
                 dt_start = to_datetime(currentEvent['start'])
                 dt_end = to_datetime(currentEvent['end'])
+                plot = channel['node']['title'] + ' - ' + \
+                    dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" + \
+                    currentEvent['title']
+                if 'genre' in currentEvent['eventMetadata'] and \
+                    currentEvent['eventMetadata']['genre'] and \
+                    'title' in currentEvent['eventMetadata']['genre']:
+                    plot += "\n" + currentEvent['eventMetadata']['genre']['title']
+                if 'fullDescription' in currentEvent['eventMetadata']:
+                    plot += "\n\n" +currentEvent['eventMetadata']['fullDescription']
                 addLink(mode='playChannel', 
                         name=dt_start.strftime('%H:%M') + ' ' + dt_end.strftime('%H:%M') + ' - ' + currentEvent['title'],
                         iconimage=channel['node']['logo']['url'],
@@ -156,10 +165,7 @@ def indexLiveTV():
                         banner=channel['node']['logo']['url'],
                         poster=currentEvent['thumbnail']['url'],
                         fanart=currentEvent['backgroundImage']['url'],
-                        plot=channel['node']['title'] + ' - ' + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" +
-                            currentEvent['title'] + "\n" + 
-                            currentEvent['eventMetadata']['genre']['title'] + "\n\n" +
-                            currentEvent['eventMetadata']['fullDescription']
+                        plot=plot
                 )
 
 # Списък с канали за преглед назад във времето
@@ -174,6 +180,15 @@ def indexChannelList():
             if not(adult) or (adult and adult_setting):
                 dt_start = to_datetime(currentEvent['start'])
                 dt_end = to_datetime(currentEvent['end'])
+                plot = channel['node']['title'] + ' - ' + \
+                    dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" + \
+                    currentEvent['title']
+                if 'genre' in currentEvent['eventMetadata'] and \
+                    currentEvent['eventMetadata']['genre'] and \
+                    'title' in currentEvent['eventMetadata']['genre']:
+                    plot += "\n" + currentEvent['eventMetadata']['genre']['title']
+                if 'fullDescription' in currentEvent['eventMetadata']:
+                    plot += "\n\n" +currentEvent['eventMetadata']['fullDescription']
                 addDir(mode='indexChannelGuide', 
                     name=channel['node']['title'] + ' - ' + currentEvent['title'],
                     iconimage=channel['node']['logo']['url'],
@@ -181,10 +196,7 @@ def indexChannelList():
                     banner=channel['node']['logo']['url'],
                     poster=currentEvent['thumbnail']['url'],
                     fanart=currentEvent['backgroundImage']['url'],
-                    plot=channel['node']['title'] + ' - ' + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" +
-                        currentEvent['title'] + "\n" + 
-                        currentEvent['eventMetadata']['genre']['title'] + "\n\n" +
-                        currentEvent['eventMetadata']['fullDescription']
+                    plot=plot
                 )
 
 # Списък на програмата на даден канал
@@ -212,6 +224,15 @@ def indexChannelGuide(args):
         if not(adult) or (adult and adult_setting):
             dt_start = to_datetime(event['start'])
             dt_end = to_datetime(event['end'])
+            plot = channel['title'] + ' - ' + \
+                dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" + \
+                event['title']
+            if 'genre' in event['eventMetadata'] and \
+                event['eventMetadata']['genre'] and \
+                'title' in event['eventMetadata']['genre']:
+                plot += "\n" + event['eventMetadata']['genre']['title']
+            if 'fullDescription' in event['eventMetadata']:
+                plot += "\n\n" +event['eventMetadata']['fullDescription']
             addLink(mode='catchupEvent', 
                     name=dt_start.strftime('%H:%M') + ' ' + dt_end.strftime('%H:%M') + ' - ' + event['title'],
                     iconimage=event['thumbnail']['url'],
@@ -219,10 +240,7 @@ def indexChannelGuide(args):
                     banner=event['thumbnail']['url'],
                     poster=event['thumbnail']['url'],
                     fanart=event['backgroundImage']['url'],
-                    plot=channel['title'] + ' - ' + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" +
-                    event['title'] + "\n" + 
-                    event['eventMetadata']['genre']['title'] + "\n\n" +
-                    event['eventMetadata']['fullDescription'],
+                    plot=plot,
                     context_items={'Добави в моя списък': 'favoriteItem,' + str(profile_id) + ',' + str(event['id'])}
             )
     addDir('indexChannelGuide', ' << ' + start_date.strftime('%Y-%m-%d'), '', {'channel_id':channel_id, 'days': days + 1})
@@ -282,12 +300,12 @@ def indexVODFolder(args):
       "backgroundWidth": 1920}
     res = client.execute(open(resources_path + '/getFolderById.graphql').read(), variables=variables)
     for item in res['data']['contentFolder']['firstItems']['edges'] + res['data']['contentFolder']['lastItems']['edges']:
-        fullDescription = ''
         fanart = item['node']['thumbnail']['url']
         if 'backgroundImage' in item['node']:
             fanart = item['node']['backgroundImage']['url']
+        plot = item['node']['title']
         if 'fullDescription' in item['node']:
-            fullDescription = "\n\n" + item['node']['fullDescription']
+            plot += "\n\n" + item['node']['fullDescription']
         addDir(mode='indexVOD', 
                 name=item['node']['title'],
                 iconimage=item['node']['thumbnail']['url'],
@@ -295,9 +313,7 @@ def indexVODFolder(args):
                 banner=item['node']['thumbnail']['url'],
                 poster=item['node']['thumbnail']['url'],
                 fanart=fanart,
-                plot=item['node']['title'] #+ "\n" + 
-                  #event['eventMetadata']['genre']['title'] + "\n\n" +
-                  + fullDescription
+                plot=plot
         )
 
 def playPath(path, title = "", plot=""):
@@ -356,6 +372,15 @@ def indexMyLibrary():
                 channel = event['channel']
                 dt_start = to_datetime(event['start'])
                 dt_end = to_datetime(event['end'])
+                plot = channel['title'] + ' - ' + \
+                    dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" + \
+                    event['title']
+                if 'genre' in event['eventMetadata'] and \
+                    event['eventMetadata']['genre'] and \
+                    'title' in event['eventMetadata']['genre']:
+                    plot += "\n" + event['eventMetadata']['genre']['title']
+                if 'fullDescription' in event['eventMetadata']:
+                    plot += "\n\n" +event['eventMetadata']['fullDescription']
                 addLink(mode='catchupEvent', 
                         name=channel['title'] + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + ' - ' + event['title'],
                         iconimage=event['thumbnail']['url'],
@@ -363,10 +388,7 @@ def indexMyLibrary():
                         banner=event['thumbnail']['url'],
                         poster=event['thumbnail']['url'],
                         #fanart=event['backgroundImage']['url'],
-                        plot=channel['title'] + ' - ' + dt_start.strftime('%Y-%m-%d %H:%M') + ' ' + dt_end.strftime('%H:%M') + "\n" +
-                        event['title'] + "\n" + 
-                        event['eventMetadata']['genre']['title'] + "\n\n" +
-                        event['eventMetadata']['fullDescription'],
+                        plot=plot,
                         context_items={'Премахване от моя списък': 'unfavoriteItem,' + str(profile_id) + ',' + str(event['id'])}
                 )
 
